@@ -1,18 +1,29 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Lama ID Foto-Upload</title>
-        <meta charset="UTF-8">
-    </head>
-    <body>
-        <div id="login-div">
-            <noscript>Diese Seite benötigt aktiviertes JavaScript.</noscript>
+<html lang="de">
+
+<head>
+    <title>Lama ID Foto-Upload</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="styles.css" />
+</head>
+
+<body>
+    <noscript>Diese Seite benötigt aktiviertes JavaScript.</noscript>
+    <div id="login-div">
+        <span>Lama ID - Logo</span>
+        <div id="login-side">
             <input type="email" name="email" id="email" placeholder="E-Mail Adresse" required />
             <input type="password" name="password" id="password" placeholder="Passwort" required />
             <button id="login">Anmelden</button>
-            <span style="display: none;" id="loginError">Falsche Zugangsdaten</span>
+            <div style="display: none;" id="login-error" class="error"><img src="icons/warning.svg"><div>Eingaben fehlerhaft!<br>Bitte ID und Code überprüfen!</div></div>
         </div>
-        <div id="upload-picture-div"></div>
-        <script type="module" src="./app.js"></script>
-    </body>
+    </div>
+    <div id="app"></div>
+    <div id="footer">
+        <span>Impressum</span>
+        <span>Datenschutz</span>
+    </div>
+    <script type="module" src="./app.js"></script>
+</body>
+
 </html>

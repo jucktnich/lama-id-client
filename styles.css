@@ -1,0 +1,164 @@
+:root {
+    /* Colors: */
+    --akzente-buttons: #49BCFF;
+    --beschriftung: #7E7E7E;
+    --disabled: #b1b1b1;
+    --text: #3D3D3D;
+    --error-background: #F658581A;
+}
+
+body {
+    overflow-y: hidden;
+    font: normal normal normal 18px/24px Open Sans;
+}
+
+input {
+    border: 2px solid var(--akzente-buttons);
+    background: white 0% 0% no-repeat padding-box;
+    padding: 1em;
+    opacity: 1;
+    height: 1.5em;
+}
+
+input {
+    color: var(--beschriftung);
+    text-align: left;
+    font: normal normal normal 18px/24px Open Sans;
+    letter-spacing: 0px;
+    color: #7E7E7E;
+    opacity: 1;
+}
+
+button {
+    background: var(--akzente-buttons) 0% 0% no-repeat padding-box;
+    opacity: 1;
+    border: none;
+    height: 3.5em;
+}
+
+button {
+    text-align: center;
+    font: normal normal 600 18px/24px Open Sans;
+    letter-spacing: 0px;
+    color: #FCFCFC;
+    opacity: 1;
+}
+
+.center-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+h1 {
+    color: var(--text);
+    text-align: left;
+    font: normal normal bold 40px/50px Open Sans;
+    letter-spacing: 0px;
+    opacity: 1;
+}
+
+h2 {
+    color: var(--text);
+    text-align: left;
+    font: normal normal 600 24px/34px Open Sans;
+    letter-spacing: 0px;
+    color: #3D3D3D;
+    opacity: 1;
+}
+
+.error {
+    display: grid;
+    grid-template-columns: auto auto;
+    background: var(--error-background) 0% 0% no-repeat padding-box;
+    opacity: 1;
+    padding: 1em;
+    color: var(--text);
+    text-align: left;
+    font: normal normal 600 18px/24px Open Sans;
+    letter-spacing: 0px;
+}
+
+#app,
+#login-div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(100vh - 4em);
+}
+
+#footer {
+    position: absolute;
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 1em;
+    bottom: 0;
+    left: 0;
+    margin: 1em;
+    color: var(--text);
+    font: normal normal normal 18px/24px Open Sans;
+    letter-spacing: 0px;
+    color: #3D3D3D;
+    opacity: 1;
+}
+
+#login-div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1em;
+}
+
+#login-side {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1em;
+    width: 22em;
+    max-height: calc(100vh - 4em);
+    ;
+}
+
+.photo-upload {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    border: 2px dashed var(--beschriftung);
+    background: #F3F3F3 0% 0% no-repeat padding-box;
+    border-radius: 10px;
+    opacity: 1;
+    cursor: pointer;
+    text-align: center;
+    font: normal normal 600 18px/25px Open Sans;
+    letter-spacing: 0px;
+    color: #8D8D8D;
+    opacity: 1;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+.grid-w-line {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5em;
+}
+
+#photo-upload-text {
+    text-align: center;
+    font: normal normal 600 18px/25px Open Sans;
+    letter-spacing: 0px;
+    color: #8D8D8D;
+    opacity: 1;
+}
+
+#explainer {
+    border-left: 3px solid var(--akzente-buttons);
+    padding-left: 1.5em;
+}
+
+#upload-button {
+    width: 20em;
+    margin: 5em;
+}
+#upload-button:disabled {
+    background: var(--disabled)
+}
