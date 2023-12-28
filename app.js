@@ -37,7 +37,9 @@ function validate() {
 };
 
 function uploadSuccessfulScreen() {
-    appEle.innerHTML = `Upload erfolgreich`
+    window.scrollTo(0, 0);
+    appEle.innerHTML = `<div class="upload-successfull"><div><img style="width: 5em;" src="icons/check.svg"></div><p class="upload-successfull-text">Vielen Dank für Deinen Upload!</p><p class="upload-successfull-text">Sobald das Bild geprüft wurde, wird Dein Ausweis gedruckt und über die Schule ausgeliefert.</p><div><button id="go-to-status" style="padding: 1em">Foto ansehen und Status prüfen</button></div></div>`
+    document.getElementById('go-to-status').addEventListener('click', statusScreen)
 }
 
 async function uploadPicture() {
@@ -82,6 +84,8 @@ async function uploadPicture() {
 }
 
 function uploadPictureScreen() {
+    window.scrollTo(0, 0);
+    console.log('Upload picture screen')
     appEle.innerHTML = `<div><h1>Foto-Upload</h1>
     <div class="grid-w-line"><label id="photo-upload" class="photo-upload">
     <div class="center-content"><img style="width: 4.5em" src="icons/add-a-photo.svg"></div>
@@ -112,22 +116,68 @@ function uploadPictureScreen() {
 }
 
 async function statusScreen() {
-    const { data, error } = await supabase
+    window.scrollTo(0, 0);
+    appEle.innerHTML = '<div id="status-container"></div>';
+    const statusContainer = document.getElementById("status-container")
+    let { data, error } = await supabase
+        .from('picture_list')
+        .select()
+        .eq('user', userId)
+        .order('created_at', { ascending: false })
+    const { data: verified, error: verifiedError } = await supabase
         .from('verified_pictures')
         .select()
         .eq('user_id', userId)
-    if (error) {
-        console.warn(error);
-        appEle.innerHTML = '<span class="error">Fehler beim Laden der Daten. Wenn dieser Fehler häufiger auftritt, kontaktiere bitte den Support.</span>'
-        return;
+    outer:
+    for (let i = 0; i < verified.length; i++) {
+        for (let j = 0; j < data.length; j++) {
+            if (data[j].picture_id === verified[i].picture_id) { data[j].status = verified[i].status; data[j].rejection_reason = verified[i].rejection_reason; continue outer; }
+        };
     }
-    let status = 'unbearbeitet'
-    if (data.length !== 0) {
-        if (data[0].status === 'ACCEPTED') status = 'akzeptiert'
-        else if (data[0].status === 'REJECTED') status = 'abgelehnt'
+    let { data: user, error: userError } = await supabase
+        .from('users')
+        .select()
+        .eq('id', userId)
+    user = user[0]
+    let { data: userClass, error: classError } = await supabase
+        .from('classes')
+        .select()
+        .eq('id', user.class)
+    userClass = userClass[0]
+    let { data: school, error: schoolError } = await supabase
+        .from('schools')
+        .select()
+        .eq('id', userClass.school)
+    school = school[0]
+    console.log(data)
+    for (let i = 0; i < data.length; i++) {
+        let mrStatus;
+        if (i === 0) mrStatus = 'UPLOADED'
+        else mrStatus = 'WITHDRAWN'
+        if (data[i].status !== undefined) {
+            mrStatus = data[i].status
+        }
+        const { data: file, error: fileError } = await supabase
+            .storage
+            .from('pictures')
+            .download(`${userId}/${data[i].picture_id}.jpg`)
+        let imageUrl = URL.createObjectURL(file);
+        let status, color;
+        if (mrStatus === 'UPLOADED') { status = 'Foto hochgeladen'; color = '#95E567'; }
+        else if (mrStatus === 'WITHDRAWN') { status = 'Foto gelöscht'; color = '#bbb'; }
+        else if (mrStatus === 'ACCEPTED') { status = 'Druckvorbereitung'; color = '#FFEB8A'; }
+        else if (mrStatus === 'REJECTED') { status = 'Foto fehlerhaft'; color = '#FFA99F'; }
+        else if (mrStatus === 'PRINTED') { status = 'Gedruckt'; color = '#49BCFF'; }
+        if (i === 0 && (mrStatus === 'UPLOADED' || mrStatus === 'REJECTED')) { statusContainer.innerHTML += '<button id="new-picture-button">Neues Bild hochladen</button>'; }
+        statusContainer.innerHTML += `<div style="display: flex;"><div class="status-div"><img class="status-img" src="${imageUrl}"><div><span>Schülerausweis 2023</span><br><span>${userClass.name}, ${school.name}</span><br><span><b>Bild vom:</b> ${new Date(data[i].created_at).toLocaleString('de-DE', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span></div><p class="status" style="background: ${color};">${status}</div>`;
+        if (data[i].rejection_reason) statusContainer.innerHTML += `<div style="display: grid; grid-template-columns: auto auto;"><div></div><div class="error"><img src="icons/warning.svg"><span class="rejection-error"><b>Foto wurde abgelehnt:</b><br>${data[i].rejection_reason}</span></div></div>`
+        statusContainer.innerHTML += '</div>'
+        try {
+            document.getElementById('new-picture-button').addEventListener('click', uploadPictureScreen);
+        } catch {
+            console.debug('No new pic button')
+        }
     }
-    appEle.innerHTML = 'Du hast bereits ein Bild hochgeladen. Status: ' + status;
-    if (data[0].status === 'REJECTED') appEle.innerHTML += '<button onclick="uploadPictureScreen()">Neues Bild hochladen</button>'
 }
 
 async function loggedIn() {
@@ -135,6 +185,7 @@ async function loggedIn() {
         .from('picture_list')
         .select()
         .eq("user", userId)
+    console.log(data)
     if (error) {
         console.warn(error)
         appEle.innerHTML = '<span class="error">Fehler beim Laden der Daten. Wenn dieser Fehler häufiger auftritt, kontaktiere bitte den Support.</span>'
@@ -161,8 +212,21 @@ async function logUserIn() {
         console.log('Successful login')
         userId = data.user.id;
         document.getElementById('login-div').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
         loggedIn()
     }
 }
 
+function showDoc(type) {
+    window.scrollTo(0, 0);
+    const docs = {
+        "imprint": "Impressum",
+        "gdpr": "Datenschutzerklärung",
+    }
+    document.body.innerHTML += `<div class="doc">${docs[type]}</div>`
+}
+
+window.scrollTo(0, 0);
 document.getElementById("login").addEventListener("click", logUserIn)
+document.getElementById("imprint").addEventListener("click", () => {showDoc("imprint")})
+document.getElementById("gdpr").addEventListener("click", () => {showDoc("gdpr")})

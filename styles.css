@@ -8,8 +8,10 @@
 }
 
 body {
-    overflow-y: hidden;
     font: normal normal normal 18px/24px Open Sans;
+    position: relative;
+    margin: 0;
+    min-height: 100vh;
 }
 
 input {
@@ -68,7 +70,7 @@ h2 {
 }
 
 .error {
-    display: grid;
+    display: inline-grid;
     grid-template-columns: auto auto;
     background: var(--error-background) 0% 0% no-repeat padding-box;
     opacity: 1;
@@ -77,6 +79,51 @@ h2 {
     text-align: left;
     font: normal normal 600 18px/24px Open Sans;
     letter-spacing: 0px;
+    min-width: 0;
+}
+
+#status-container {
+    display: grid;
+    grid-template-columns: auto;
+    grid-gap: 1em;
+}
+
+.status-div {
+    background-color: #7E7E7E1A;
+    display: grid;
+    grid-template-columns: auto auto auto;
+    grid-gap: 1.5em;
+    padding: 1em;
+    color: var(--text);
+    text-align: left;
+    font: normal normal normal 18px/28px Open Sans;
+    letter-spacing: 0px;
+    color: #3D3D3D;
+    opacity: 1;
+}
+
+.status-img {
+    height: 4.4em;
+    aspect-ratio: 24/30;
+}
+
+.status {
+    border: 0.5px solid #3E3E3E;
+    padding: 0.5em;
+    min-width: 12em;
+    font: normal normal 600 18px/24px Open Sans;
+    letter-spacing: 0.72px;
+    color: #3E3E3E;
+    text-transform: uppercase;
+    text-align: center;
+    opacity: 1;
+}
+
+.rejection-error {
+    color: var(--text);
+    text-align: left;
+    font: normal normal normal 18px/28px Open Sans;
+    letter-spacing: 0px;
 }
 
 #app,
@@ -84,28 +131,51 @@ h2 {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: calc(100vh - 4em);
+    padding-bottom: 4em;
+    min-height: calc(100vh - 4em);
+    overflow-y: scroll;
+    overflow-x: hidden;
 }
 
-#footer {
+footer {
     position: absolute;
     display: grid;
     grid-template-columns: auto auto;
     gap: 1em;
     bottom: 0;
     left: 0;
-    margin: 1em;
+    /*right: 0;*/
+    padding: 1em;
     color: var(--text);
     font: normal normal normal 18px/24px Open Sans;
     letter-spacing: 0px;
     color: #3D3D3D;
+    background-color: white;
     opacity: 1;
+}
+
+footer>* {
+    cursor: pointer
 }
 
 #login-div {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1em;
+    gap: 3em;
+}
+
+#big-logo {
+    width: 13.5em;
+}
+
+#big-logo-bg {
+    margin-left: auto;
+    margin-right: 0;
+    width: 29em;
+    height: 29em;
+    background: #000000 0% 0% no-repeat padding-box;
+    border-radius: 20px;
+    opacity: 1;
 }
 
 #login-side {
@@ -159,6 +229,30 @@ input[type="file"] {
     width: 20em;
     margin: 5em;
 }
+
 #upload-button:disabled {
     background: var(--disabled)
+}
+
+.upload-successfull > * {
+    display: flex;
+    justify-content: center;
+}
+
+.upload-successfull-text {
+    color: var(--text);
+    text-align: center;
+    font: normal normal normal 20px/28px Open Sans;
+    letter-spacing: 0px;
+    color: #3D3D3D;
+    opacity: 1;
+}
+
+.doc {
+    min-width: 100vw;
+    min-height: 100%;
+    background-color: white;
+    position: absolute;
+    top: 0;
+    left: 0;
 }

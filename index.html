@@ -4,25 +4,28 @@
 <head>
     <title>Lama ID Foto-Upload</title>
     <meta charset="UTF-8">
+    <meta description="Lama ID ist eine Software mithilfe welcher Schülerausweise mit geringem Arbeitsaufwand hergestellt werden können.">
     <link rel="stylesheet" type="text/css" href="styles.css" />
+    <link rel="icon" type="image/svg" href="icons/favicon.ico">
 </head>
 
 <body>
     <noscript>Diese Seite benötigt aktiviertes JavaScript.</noscript>
     <div id="login-div">
-        <span>Lama ID - Logo</span>
+        <div class="center-content" id="big-logo-bg"><img id="big-logo" src="icons/logo-white.svg"></div>
         <div id="login-side">
+            <h1>Identität bestätigen</h1>
             <input type="email" name="email" id="email" placeholder="E-Mail Adresse" required />
             <input type="password" name="password" id="password" placeholder="Passwort" required />
             <button id="login">Anmelden</button>
             <div style="display: none;" id="login-error" class="error"><img src="icons/warning.svg"><div>Eingaben fehlerhaft!<br>Bitte ID und Code überprüfen!</div></div>
         </div>
     </div>
-    <div id="app"></div>
-    <div id="footer">
-        <span>Impressum</span>
-        <span>Datenschutz</span>
-    </div>
+    <div style="display: none;" id="app"></div>
+    <footer id="footer">
+        <span id="imprint">Impressum</span>
+        <span id="gdpr">Datenschutz</span>
+    </footer>
     <script type="module" src="./app.js"></script>
 </body>
 
