@@ -7,10 +7,17 @@
     --error-background: #F658581A;
 }
 
+@font-face {
+    font-family: Open Sans;
+    src: url(icons/open-sans.ttf);
+}
+
 body {
     font: normal normal normal 18px/24px Open Sans;
     position: relative;
     margin: 0;
+    padding-left: 1.5em;
+    padding-right: 1.5em;
     min-height: 100vh;
 }
 
@@ -202,6 +209,19 @@ footer>* {
     opacity: 1;
 }
 
+.photo-upload.uploadSuccessful {
+    border: 2px dashed var(--akzente-buttons);
+}
+
+.photo-upload.uploadSuccessful>*>* {
+    color: var(--akzente-buttons);
+    text-align: center;
+    font: normal normal 600 18px/25px Open Sans;
+    letter-spacing: 0px;
+    color: #49BCFF;
+    opacity: 1;
+}
+
 input[type="file"] {
     display: none;
 }
@@ -234,7 +254,7 @@ input[type="file"] {
     background: var(--disabled)
 }
 
-.upload-successfull > * {
+.upload-successfull>* {
     display: flex;
     justify-content: center;
 }
@@ -255,4 +275,78 @@ input[type="file"] {
     position: absolute;
     top: 0;
     left: 0;
+}
+
+.lr {
+    display: grid;
+    grid-template-columns: 2.75em auto;
+    gap: 1em;
+}
+
+/* The switch - the box around the slider */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 2.75em;
+    height: 1.5em;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* The slider */
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: calc(1.15em - 4px);
+    width: calc(1.15em - 4px);
+    left: 2px
+        /*calc(0.175em)*/
+    ;
+    bottom: 2px
+        /*calc(0.175em)*/
+    ;
+    background-color: white;
+    border: 2px solid #3E3E3E;
+    -webkit-transition: .4s;
+    transition: .4s;
+}
+
+input+.slider {
+    border: 2px solid black;
+}
+
+input:checked+.slider {
+    background-color: var(--akzente-buttons);
+}
+
+input:checked+.slider:before {
+    -webkit-transform: translateX(calc(1.6em - 8px));
+    -ms-transform: translateX(calc(1.6em - 8px));
+    transform: translateX(calc(1.6em - 8px));
+}
+
+/* Rounded sliders */
+.slider.round {
+    border-radius: 0.75em;
+}
+
+.slider.round:before {
+    border-radius: 50%;
 }

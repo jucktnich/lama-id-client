@@ -15,8 +15,8 @@
         <div class="center-content" id="big-logo-bg"><img id="big-logo" src="icons/logo-white.svg"></div>
         <div id="login-side">
             <h1>Identität bestätigen</h1>
-            <input type="email" name="email" id="email" placeholder="E-Mail Adresse" required />
-            <input type="password" name="password" id="password" placeholder="Passwort" required />
+            <input type="text" pattern="^[0-9]+$" name="email" id="email" placeholder="ID" required />
+            <input type="password" name="password" id="password" placeholder="Code" required />
             <button id="login">Anmelden</button>
             <div style="display: none;" id="login-error" class="error"><img src="icons/warning.svg"><div>Eingaben fehlerhaft!<br>Bitte ID und Code überprüfen!</div></div>
         </div>

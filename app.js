@@ -1,16 +1,22 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-const supabaseUrl = 'https://bgedbgapfrskjgvhcptz.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnZWRiZ2FwZnJza2pndmhjcHR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDMzNTY3OTUsImV4cCI6MjAxODkzMjc5NX0._vFQmXEA6QTBjCmX6b0YF0_mMNG0VGP7LEWDIVS-GXU'
+const supabaseUrl = 'https://supabase.lama-id.de'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzA0NDA5MjAwLAogICJleHAiOiAxODYyMjYyMDAwCn0.r_Iv-w4S5DncSzdO5CSIr0nIdOxG6kQFhzMkxvp6a4A'
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 const appEle = document.getElementById("app")
 
+let currentDisableStatus = [false, false, false];
 let userId = null;
 
 function uuidv4() {
     return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
         (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
     );
+}
+
+function uploadButtonUpdate() {
+    if (currentDisableStatus[0] && currentDisableStatus[1] && currentDisableStatus[2]) document.getElementById('upload-button').removeAttribute('disabled');
+    else document.getElementById('upload-button').disabled = 'true';
 }
 
 function validate() {
@@ -25,10 +31,15 @@ function validate() {
         image.onload = function () {
             if (this.width) {
                 console.log('First uploaded file is an image');
-                document.getElementById('upload-button').removeAttribute('disabled');
+                currentDisableStatus[0] = true;
+                uploadButtonUpdate();
+                document.getElementById("photo-upload-img").src = "icons/check.svg"
+                document.getElementById("photo-upload-text").innerText = ""
+                document.getElementById("photo-upload").classList.add("uploadSuccessful")
             } else {
                 console.warn('First uploaded file is NOT an image');
-                document.getElementById('upload-button').disabled = 'true';
+                currentDisableStatus[0] = false;
+                uploadButtonUpdate();
             }
         };
 
@@ -87,8 +98,8 @@ function uploadPictureScreen() {
     window.scrollTo(0, 0);
     console.log('Upload picture screen')
     appEle.innerHTML = `<div><h1>Foto-Upload</h1>
-    <div class="grid-w-line"><label id="photo-upload" class="photo-upload">
-    <div class="center-content"><img style="width: 4.5em" src="icons/add-a-photo.svg"></div>
+    <div><div class="grid-w-line"><label id="photo-upload" class="photo-upload">
+    <div class="center-content"><img style="width: 4.5em" id="photo-upload-img" src="icons/add-a-photo.svg"></div>
     <div class="center-content"><span id="photo-upload-text">Foto hier hinziehen oder<br>klicken zum auswählen</span></div>
     <input type="file" id="file-upload"></label>
     <div id="explainer"><h2>Bitte achte auf folgende Vorgaben an Dein Foto</h2>
@@ -99,6 +110,9 @@ function uploadPictureScreen() {
     <li>keine Accessoires wie Sonnenbrillen, Mützen, etc.</li>
     <li>keine Fotos mit mehr als einer Person</li>
     </div></div>
+    <br>
+    <div class="lr"><label class="switch"><input type="checkbox" id="consent-1"><span class="slider round"></span></label><span>Ich erteile meiner Schule die Vollmacht, im Falle von Problemen meine Kontakt-Daten an Lama-ID auszuhändigen.</span></div><br>
+    <div class="lr"><label class="switch"><input type="checkbox" id="consent-2"><span class="slider round"></span></label><span>Ich habe die Datenschutz-Bedingungen zum Foto-Upload gelesen und bin einverstanden.</span></div></div>
     <div class="center-content"><button id="upload-button" disabled>Bild hochladen</button></div></div>`
     document.getElementById("photo-upload").addEventListener('dragover', (ev) => {
         ev.preventDefault();
@@ -111,6 +125,8 @@ function uploadPictureScreen() {
         document.getElementById("file-upload").files = container.files;
         validate();
     })
+    document.getElementById("consent-1").addEventListener('change', (event) => { currentDisableStatus[1] = event.currentTarget.checked; uploadButtonUpdate(); })
+    document.getElementById("consent-2").addEventListener('change', (event) => { currentDisableStatus[2] = event.currentTarget.checked; uploadButtonUpdate(); })
     document.getElementById("file-upload").addEventListener('change', validate)
     document.getElementById("upload-button").addEventListener('click', uploadPicture)
 }
@@ -163,13 +179,13 @@ async function statusScreen() {
             .download(`${userId}/${data[i].picture_id}.jpg`)
         let imageUrl = URL.createObjectURL(file);
         let status, color;
-        if (mrStatus === 'UPLOADED') { status = 'Foto hochgeladen'; color = '#95E567'; }
+        if (mrStatus === 'UPLOADED' || mrStatus === 'CLARIFICATION') { status = 'Foto hochgeladen'; color = '#95E567'; }
         else if (mrStatus === 'WITHDRAWN') { status = 'Foto gelöscht'; color = '#bbb'; }
         else if (mrStatus === 'ACCEPTED') { status = 'Druckvorbereitung'; color = '#FFEB8A'; }
         else if (mrStatus === 'REJECTED') { status = 'Foto fehlerhaft'; color = '#FFA99F'; }
         else if (mrStatus === 'PRINTED') { status = 'Gedruckt'; color = '#49BCFF'; }
         if (i === 0 && (mrStatus === 'UPLOADED' || mrStatus === 'REJECTED')) { statusContainer.innerHTML += '<button id="new-picture-button">Neues Bild hochladen</button>'; }
-        statusContainer.innerHTML += `<div style="display: flex;"><div class="status-div"><img class="status-img" src="${imageUrl}"><div><span>Schülerausweis 2023</span><br><span>${userClass.name}, ${school.name}</span><br><span><b>Bild vom:</b> ${new Date(data[i].created_at).toLocaleString('de-DE', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span></div><p class="status" style="background: ${color};">${status}</div>`;
+        statusContainer.innerHTML += `<div style="display: flex;"><div class="status-div"><img class="status-img" src="${imageUrl}"><div><span>Schülerausweis 20${user.public_id.toString().slice(3,5)}</span><br><span>${userClass.name}, ${school.name}</span><br><span><b>Bild vom:</b> ${new Date(data[i].created_at).toLocaleString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div><p class="status" style="background: ${color};">${status}</div>`;
         if (data[i].rejection_reason) statusContainer.innerHTML += `<div style="display: grid; grid-template-columns: auto auto;"><div></div><div class="error"><img src="icons/warning.svg"><span class="rejection-error"><b>Foto wurde abgelehnt:</b><br>${data[i].rejection_reason}</span></div></div>`
         statusContainer.innerHTML += '</div>'
         try {
@@ -202,7 +218,7 @@ async function loggedIn() {
 
 async function logUserIn() {
     const { data, error } = await supabase.auth.signInWithPassword({
-        email: document.getElementById('email').value,
+        email: document.getElementById('email').value + '@lama-id.de',
         password: document.getElementById('password').value,
     });
     if (error) {
@@ -228,5 +244,5 @@ function showDoc(type) {
 
 window.scrollTo(0, 0);
 document.getElementById("login").addEventListener("click", logUserIn)
-document.getElementById("imprint").addEventListener("click", () => {showDoc("imprint")})
-document.getElementById("gdpr").addEventListener("click", () => {showDoc("gdpr")})
+document.getElementById("imprint").addEventListener("click", () => { showDoc("imprint") })
+document.getElementById("gdpr").addEventListener("click", () => { showDoc("gdpr") })
