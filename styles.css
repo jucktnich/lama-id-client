@@ -133,7 +133,7 @@ h2 {
     letter-spacing: 0px;
 }
 
-#app,
+#app-container,
 #login-div {
     display: flex;
     align-items: center;
@@ -142,6 +142,27 @@ h2 {
     min-height: calc(100vh - 4em);
     overflow-y: scroll;
     overflow-x: hidden;
+}
+
+#app-container {
+    padding-top: 9em;
+    min-height: calc(100vh - 13em);
+}
+
+#app-logo-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 9em;
+    background-color: white;
+}
+
+#app-logo {
+    position: absolute;
+    top: 2em;
+    left: 2em;
+    width: 5em;
 }
 
 footer {
@@ -190,8 +211,8 @@ footer>* {
     grid-template-columns: 1fr;
     gap: 1em;
     width: 22em;
+    max-width: calc(100vw - 3em);
     max-height: calc(100vh - 4em);
-    ;
 }
 
 .photo-upload {
@@ -207,6 +228,7 @@ footer>* {
     letter-spacing: 0px;
     color: #8D8D8D;
     opacity: 1;
+    max-width: calc(100vw - 3em);
 }
 
 .photo-upload.uploadSuccessful {
@@ -269,10 +291,11 @@ input[type="file"] {
 }
 
 .doc {
-    min-width: 100vw;
+    min-width: calc(100vw -3em);
     min-height: 100%;
     background-color: white;
     position: absolute;
+    padding: 1em;
     top: 0;
     left: 0;
 }
@@ -336,6 +359,10 @@ input:checked+.slider {
     background-color: var(--akzente-buttons);
 }
 
+/*input:focus+.slider {
+    box-shadow: 0 0 1px #2196F3;
+}*/
+
 input:checked+.slider:before {
     -webkit-transform: translateX(calc(1.6em - 8px));
     -ms-transform: translateX(calc(1.6em - 8px));
@@ -349,4 +376,39 @@ input:checked+.slider:before {
 
 .slider.round:before {
     border-radius: 50%;
+}
+
+#upload-button {
+    padding: 0 2em;
+}
+
+@media only screen and (max-width: 800px) {
+    #login-div {
+        grid-template-columns: 1fr;
+    }
+
+    #big-logo-bg {
+        margin: 0 auto;
+    }
+
+    #login-side {
+        margin: 0 auto;
+    }
+    .grid-w-line {
+        display: flex;
+        justify-content: center;
+    }
+    .photo-upload {
+        width: calc(100vw - 4em);
+    }
+    #explainer {
+        display: none;
+    }
+    .lr {
+        max-width: calc(100vw - 3em);
+    }
+    .status-div {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
 }

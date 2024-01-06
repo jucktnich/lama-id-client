@@ -3,10 +3,16 @@ const supabaseUrl = 'https://supabase.lama-id.de'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzA0NDA5MjAwLAogICJleHAiOiAxODYyMjYyMDAwCn0.r_Iv-w4S5DncSzdO5CSIr0nIdOxG6kQFhzMkxvp6a4A'
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-const appEle = document.getElementById("app")
+const appEle = document.getElementById("app");
+const sessionID = uuidv4();
 
 let currentDisableStatus = [false, false, false];
-let userId = null;
+let user = null;
+let userID = null;
+
+function showError(error = 'Fehler beim Laden der Daten. Wenn dieser Fehler häufiger auftritt, kontaktiere bitte den Support.') {
+    appEle.innerHTML = `<span class="error">${error}</span>`
+}
 
 function uuidv4() {
     return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
@@ -50,7 +56,7 @@ function validate() {
 function uploadSuccessfulScreen() {
     window.scrollTo(0, 0);
     appEle.innerHTML = `<div class="upload-successfull"><div><img style="width: 5em;" src="icons/check.svg"></div><p class="upload-successfull-text">Vielen Dank für Deinen Upload!</p><p class="upload-successfull-text">Sobald das Bild geprüft wurde, wird Dein Ausweis gedruckt und über die Schule ausgeliefert.</p><div><button id="go-to-status" style="padding: 1em">Foto ansehen und Status prüfen</button></div></div>`
-    document.getElementById('go-to-status').addEventListener('click', statusScreen)
+    document.getElementById("go-to-status").addEventListener('click', statusScreen)
 }
 
 async function uploadPicture() {
@@ -70,19 +76,28 @@ async function uploadPicture() {
                 c.height = this.height;
                 ctx.drawImage(this, 0, 0);
                 c.toBlob(async (blob) => {
-                    let converted = new File([blob], "converted.jpg", { type: "image/jpeg" });
-                    let id = uuidv4();
-                    let { data, error } = await supabase
+                    const converted = new File([blob], "converted.jpg", { type: "image/jpeg" });
+                    const id = uuidv4();
+                    const { error: uploadError } = await supabase
                         .storage
                         .from('pictures')
-                        .upload(userId + '/' + id + '.jpg', converted, {
+                        .upload(userID + '/' + id + '.jpg', converted, {
                             cacheControl: '3600',
                             upsert: false
                         })
-                    if (error) { alert("Fehler beim Upload"); return; }
-                    await supabase
+                    if (uploadError) {
+                        console.warn(uploadError);
+                        showError('Fehler beim Upload des Fotos. Wenn dieser Fehler häufiger auftritt, kontaktiere bitte den Support.');
+                        return;
+                    }
+                    const { error: pictureListError } = await supabase
                         .from('picture_list')
-                        .insert({ picture_id: id, user: userId })
+                        .insert({ picture_id: id, user_id: userID })
+                    if (pictureListError) {
+                        console.warn(pictureListError);
+                        showError();
+                        return;
+                    }
                     uploadSuccessfulScreen()
                 }, "image/jpeg", 1);
             } else {
@@ -97,7 +112,7 @@ async function uploadPicture() {
 function uploadPictureScreen() {
     window.scrollTo(0, 0);
     console.log('Upload picture screen')
-    appEle.innerHTML = `<div><h1>Foto-Upload</h1>
+    appEle.innerHTML = `<div style="max-width: calc(100vw - 3em);"><h1>Foto-Upload</h1>
     <div><div class="grid-w-line"><label id="photo-upload" class="photo-upload">
     <div class="center-content"><img style="width: 4.5em" id="photo-upload-img" src="icons/add-a-photo.svg"></div>
     <div class="center-content"><span id="photo-upload-text">Foto hier hinziehen oder<br>klicken zum auswählen</span></div>
@@ -114,11 +129,12 @@ function uploadPictureScreen() {
     <div class="lr"><label class="switch"><input type="checkbox" id="consent-1"><span class="slider round"></span></label><span>Ich erteile meiner Schule die Vollmacht, im Falle von Problemen meine Kontakt-Daten an Lama-ID auszuhändigen.</span></div><br>
     <div class="lr"><label class="switch"><input type="checkbox" id="consent-2"><span class="slider round"></span></label><span>Ich habe die Datenschutz-Bedingungen zum Foto-Upload gelesen und bin einverstanden.</span></div></div>
     <div class="center-content"><button id="upload-button" disabled>Bild hochladen</button></div></div>`
-    document.getElementById("photo-upload").addEventListener('dragover', (ev) => {
+    const photoUpload = document.getElementById("photo-upload")
+    photoUpload.addEventListener('dragover', (ev) => {
         ev.preventDefault();
         ev.dataTransfer.dropEffect = "move";
     })
-    document.getElementById("photo-upload").addEventListener('drop', (ev) => {
+    photoUpload.addEventListener('drop', (ev) => {
         ev.preventDefault();
         let container = new DataTransfer();
         [...ev.dataTransfer.files].map(file => container.items.add(file));
@@ -134,49 +150,72 @@ function uploadPictureScreen() {
 async function statusScreen() {
     window.scrollTo(0, 0);
     appEle.innerHTML = '<div id="status-container"></div>';
-    const statusContainer = document.getElementById("status-container")
-    let { data, error } = await supabase
+    const statusContainer = document.getElementById("status-container");
+
+    if (!user) {
+        const { data: users, error: userError } = await supabase
+            .from('users')
+            .select('*, class:class_id(*), school:school_id(*)')
+            .eq('id', userID);
+        if (userError) {
+            console.warn(userError);
+            showError();
+            return;
+        }
+        user = users[0]
+        if (!user) {
+            console.warn('User is empty');
+            showError();
+            return;
+        }
+        console.log('User data fetched', user);
+    }
+
+    let { data: pictureList, error: pictureListError } = await supabase
         .from('picture_list')
         .select()
-        .eq('user', userId)
-        .order('created_at', { ascending: false })
+        .eq('user_id', userID)
+        .order('created_at', { ascending: false });
+    if (pictureListError) {
+        console.warn(pictureListError);
+        showError();
+        return;
+    }
+
     const { data: verified, error: verifiedError } = await supabase
         .from('verified_pictures')
         .select()
-        .eq('user_id', userId)
+        .eq('user_id', userID)
+    if (verifiedError) {
+        console.warn(verifiedError);
+        showError();
+        return;
+    }
+
     outer:
     for (let i = 0; i < verified.length; i++) {
-        for (let j = 0; j < data.length; j++) {
-            if (data[j].picture_id === verified[i].picture_id) { data[j].status = verified[i].status; data[j].rejection_reason = verified[i].rejection_reason; continue outer; }
+        for (let j = 0; j < pictureList.length; j++) {
+            if (pictureList[j].picture_id === verified[i].picture_id) { pictureList[j].status = verified[i].status; pictureList[j].rejection_reason = verified[i].rejection_reason; continue outer; }
         };
     }
-    let { data: user, error: userError } = await supabase
-        .from('users')
-        .select()
-        .eq('id', userId)
-    user = user[0]
-    let { data: userClass, error: classError } = await supabase
-        .from('classes')
-        .select()
-        .eq('id', user.class)
-    userClass = userClass[0]
-    let { data: school, error: schoolError } = await supabase
-        .from('schools')
-        .select()
-        .eq('id', userClass.school)
-    school = school[0]
-    console.log(data)
-    for (let i = 0; i < data.length; i++) {
+
+    console.log('Showing the status with following pictures', pictureList);
+    for (let i = 0; i < pictureList.length; i++) {
         let mrStatus;
         if (i === 0) mrStatus = 'UPLOADED'
         else mrStatus = 'WITHDRAWN'
-        if (data[i].status !== undefined) {
-            mrStatus = data[i].status
+        if (pictureList[i].status !== undefined) {
+            mrStatus = pictureList[i].status
         }
         const { data: file, error: fileError } = await supabase
             .storage
             .from('pictures')
-            .download(`${userId}/${data[i].picture_id}.jpg`)
+            .download(`${userID}/${pictureList[i].picture_id}.jpg`)
+        if (fileError) {
+            console.warn(fileError);
+            showError();
+            return;
+        }
         let imageUrl = URL.createObjectURL(file);
         let status, color;
         if (mrStatus === 'UPLOADED' || mrStatus === 'CLARIFICATION') { status = 'Foto hochgeladen'; color = '#95E567'; }
@@ -185,8 +224,8 @@ async function statusScreen() {
         else if (mrStatus === 'REJECTED') { status = 'Foto fehlerhaft'; color = '#FFA99F'; }
         else if (mrStatus === 'PRINTED') { status = 'Gedruckt'; color = '#49BCFF'; }
         if (i === 0 && (mrStatus === 'UPLOADED' || mrStatus === 'REJECTED')) { statusContainer.innerHTML += '<button id="new-picture-button">Neues Bild hochladen</button>'; }
-        statusContainer.innerHTML += `<div style="display: flex;"><div class="status-div"><img class="status-img" src="${imageUrl}"><div><span>Schülerausweis 20${user.public_id.toString().slice(3,5)}</span><br><span>${userClass.name}, ${school.name}</span><br><span><b>Bild vom:</b> ${new Date(data[i].created_at).toLocaleString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div><p class="status" style="background: ${color};">${status}</div>`;
-        if (data[i].rejection_reason) statusContainer.innerHTML += `<div style="display: grid; grid-template-columns: auto auto;"><div></div><div class="error"><img src="icons/warning.svg"><span class="rejection-error"><b>Foto wurde abgelehnt:</b><br>${data[i].rejection_reason}</span></div></div>`
+        statusContainer.innerHTML += `<div style="display: flex;"><div class="status-div"><img class="status-img" src="${imageUrl}"><div><span>Schülerausweis 20${user.public_id.toString().slice(3, 5)}</span><br><span>${user.class.name}, ${user.school.name}</span><br><span><b>Bild vom:</b> ${new Date(pictureList[i].created_at).toLocaleString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div><p class="status" style="background: ${color};">${status}</div>`;
+        if (pictureList[i].rejection_reason) statusContainer.innerHTML += `<div style="display: grid; grid-template-columns: auto auto;"><div></div><div class="error"><img src="icons/warning.svg"><span class="rejection-error"><b>Foto wurde abgelehnt:</b><br>${pictureList[i].rejection_reason}</span></div></div>`
         statusContainer.innerHTML += '</div>'
         try {
             document.getElementById('new-picture-button').addEventListener('click', uploadPictureScreen);
@@ -197,22 +236,22 @@ async function statusScreen() {
 }
 
 async function loggedIn() {
-    const { data, error } = await supabase
+    const { data: pictureList, error } = await supabase
         .from('picture_list')
         .select()
-        .eq("user", userId)
-    console.log(data)
+        .eq('user_id', userID)
     if (error) {
-        console.warn(error)
-        appEle.innerHTML = '<span class="error">Fehler beim Laden der Daten. Wenn dieser Fehler häufiger auftritt, kontaktiere bitte den Support.</span>'
+        console.warn(error);
+        showError();
         return;
     }
-    if (data.length === 0) {
-        console.log('No picture uploaded');
-        uploadPictureScreen()
+
+    if (pictureList.length === 0) {
+        console.log('No picture uploaded -> showing Upload Picture Screen');
+        uploadPictureScreen();
     } else {
-        console.log('Already a picture uploaded');
-        statusScreen()
+        console.log('There was already a picture uploaded -> showing Status Screen. Picture List:', pictureList);
+        statusScreen();
     }
 }
 
@@ -225,24 +264,50 @@ async function logUserIn() {
         console.warn(error);
         document.getElementById('login-error').style.display = 'grid';
     } else {
-        console.log('Successful login')
-        userId = data.user.id;
+        userID = data.user.id;
+        console.log('Successful login. ID is', userID);
         document.getElementById('login-div').style.display = 'none';
-        document.getElementById('app').style.display = 'flex';
-        loggedIn()
+        document.getElementById('app-container').style.display = 'flex';
+        loggedIn();
     }
 }
 
 function showDoc(type) {
     window.scrollTo(0, 0);
     const docs = {
-        "imprint": "Impressum",
-        "gdpr": "Datenschutzerklärung",
-    }
-    document.body.innerHTML += `<div class="doc">${docs[type]}</div>`
+        "imprint": `<p style="text-align: center;"><strong>Impressum</strong></p> <p><strong><br />Diensteanbieter gemäß § 5 des Telemediengesetzes</strong></p> <p> Lamarketing e.K.</p> <p> Andreas Vogt</p> <p><strong><br />Anschrift & Kontaktdaten</strong></p> <p> Jahnstraße 16<br />71729 Erdmannhausen</p> <p> Telefon: <a href=tel:+49714450793800">07144-50793800</a> &#40;kein Support&#41;<br />Fax: 07144-50793805 &#40;kein Support&#41;<br />Mail: <a href="mailto:team@agentur-lamarketing.de">team@agentur-lamarketing.de</a> &#40;kein Support&#41;</p> <p><strong><br />Handelsregister</strong></p> <p> Amtsgericht Stuttgart - HRA 736763</p> <p><strong><br />Umsatzsteuer-Identifikationsnummer</strong></p> <p> DE316866376</p> <p><strong><br />Streitbeilegung</strong></p> <p>Zur Teilnahme an einem Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle sind wir nicht bereit und nicht verpflichtet.</p> <p><strong><br />Berufshaftpflichtversicherung</strong></p> <p> SV SparkassenVersicherung Holding AG<br />Löwentorstraße 65<br />70376 Stuttgart</p> <p> </p>`,
+        "gdpr": `<p style="text-align: center;"><strong>Datenschutzerklärung</strong></p> <p><br />Nachfolgend informieren wir Sie über die Verarbeitung Ihrer personenbezogenen Daten im Rahmen der Nutzung unseres Online-Angebots.</p> <p><strong><br />Verantwortlicher</strong></p> <p> Den Namen und die Kontaktdaten des Verantwortlichen finden Sie im Impressum. </p> <p><strong><br />Ansprechpartner</strong></p> <p> Bei Fragen zum Datenschutz wenden Sie sich bitte an die im Impressum angegebenen Kontaktdaten. </p> <p><strong><br />Speicherdauer</strong></p> <p>Wir löschen Ihre personenbezogenen Daten grundsätzlich dann, wenn diese für die Zwecke, für die sie erhoben oder auf sonstige Weise verarbeitet wurden, nicht mehr notwendig sind.</p> <p>Falls wir Sie um Ihre Einwilligung gebeten und Sie diese erteilt haben, löschen wir Ihre personenbezogenen Daten, wenn Sie Ihre Einwilligung widerrufen und es an einer anderweitigen Rechtsgrundlage für die Verarbeitung fehlt.</p> <p>Wir löschen Ihre personenbezogenen Daten, wenn Sie Widerspruch gegen die Verarbeitung einlegen und keine vorrangigen berechtigten Gründe für die Verarbeitung vorliegen oder Sie Widerspruch gegen die Verarbeitung zum Zwecke der Direktwerbung oder eines damit in Verbindung stehenden Profiling einlegen.</p> <p>Ist eine Löschung nicht möglich, weil eine Verarbeitung noch zur Erfüllung einer rechtlichen Verpflichtung (gesetzliche Aufbewahrungsfristen etc.), der wir unterliegen, oder zur Geltendmachung, Ausübung oder Verteidigung von Rechtsansprüchen erforderlich ist, schränken wir die Verarbeitung Ihrer personenbezogenen Daten ein.</p> <p>Weitere Informationen zur Speicherdauer finden Sie auch in den nachfolgenden Passagen.</p> <p><strong><br />Ihre Rechte</strong></p> <p>Sie haben uns gegenüber folgende Rechte hinsichtlich Ihrer personenbezogenen Daten:<br /> - Recht auf Auskunft<br /> - Recht auf Berichtigung<br /> - Recht auf Löschung<br /> - Recht auf Einschränkung der Verarbeitung<br /> - Recht auf Widerspruch gegen die Verarbeitung<br /> - Recht auf Datenübertragbarkeit </p> <p style="background-color: #cccccc; padding: 15px;"><strong> Sie haben das Recht, aus Gründen, die sich aus Ihrer besonderen Situation ergeben, jederzeit gegen die Verarbeitung Ihrer personenbezogenen Daten, die aufgrund von Artikel 6 Abs. 1 lit. e oder f DS-GVO erfolgt, Widerspruch einzulegen; dies gilt auch für ein auf diese Bestimmungen gestütztes Profiling. Wir verarbeiten Ihre personenbezogenen Daten dann nicht mehr, es sei denn, wir können zwingende schutzwürdige Gründe für die Verarbeitung nachweisen, die Ihre Interessen, Rechte und Freiheiten überwiegen, oder die Verarbeitung dient der Geltendmachung, Ausübung oder Verteidigung von Rechtsansprüchen. <br /> Falls wir Ihre personenbezogenen Daten verarbeiten, um Direktwerbung zu betreiben, haben Sie das Recht, jederzeit Widerspruch gegen die Verarbeitung Ihrer personenbezogenen Daten zum Zwecke derartiger Werbung einzulegen; dies gilt auch für das Profiling, soweit es mit solcher Direktwerbung in Verbindung steht. Wir werden Ihre personenbezogenen Daten dann nicht mehr für diese Zwecke verarbeiten. </strong> </p> <p>Sie haben das Recht, eine Einwilligung zur Verarbeitung Ihrer personenbezogenen Daten jederzeit zu widerrufen, falls Sie uns eine solche Einwilligung erteilt haben. Durch den Widerruf der Einwilligung wird die Rechtmäßigkeit der aufgrund der Einwilligung bis zum Widerruf erfolgten Verarbeitung nicht berührt.</p> <p>Sie haben das Recht, sich bei einer Aufsichtsbehörde über die Verarbeitung Ihrer personenbezogenen Daten durch uns zu beschweren.</p> <p><strong><br />Bereitstellung Ihrer personenbezogenen Daten</strong></p> <p>Die Bereitstellung Ihrer personenbezogenen Daten ist grundsätzlich weder gesetzlich noch vertraglich vorgeschrieben und nicht für einen Vertragsabschluss erforderlich. Sie sind grundsätzlich nicht verpflichtet, Ihre personenbezogenen Daten bereitzustellen. Soweit dies dennoch einmal der Fall sein sollte, weisen wir Sie bei Erhebung Ihrer personenbezogenen Daten gesondert darauf hin (beispielsweise durch Kennzeichnung der Pflichtfelder bei Eingabeformularen).</p> <p>Die Nichtbereitstellung Ihrer personenbezogenen Daten hat regelmäßig zur Folge, dass wir Ihre personenbezogenen Daten nicht für einen der nachfolgend beschriebenen Zwecke verarbeiten und Sie ein mit der jeweiligen Verarbeitung zusammenhängendes Angebot nicht wahrnehmen können (Beispiel: Ohne Bereitstellung Ihrer E-Mail-Adresse erhalten Sie unseren Newsletter nicht).</p> <p><strong><br />Webhosting</strong></p> <p>Zum Webhosting setzen wir externe Dienste ein. Diese Dienste können Zugriff auf personenbezogene Daten haben, die im Rahmen der Nutzung unseres Online-Angebots verarbeitet werden.</p> <p><strong><br />Webserver-Logfiles</strong></p> <p>Wir verarbeiten Ihre personenbezogenen Daten, um Ihnen unser Online-Angebot anzeigen zu können und die Stabilität und Sicherheit unseres Online-Angebots zu gewährleisten. Dabei werden Informationen (beispielsweise angefragtes Element, aufgerufene URL, Betriebssystem, Datum und Uhrzeit der Anfrage, Browsertyp und die verwendete Version, IP-Adresse, verwendetes Protokoll, übertragene Datenmenge, User Agent, Referrer URL, Zeitzonendifferenz zur Greenwich Mean Time (GMT) und/oder HTTP-Statuscode) in sogenannten Logfiles (Access-Log, Error-Log etc.) gespeichert.</p> <p>Falls wir Sie um Ihre Einwilligung gebeten und Sie diese erteilt haben, ist die Rechtsgrundlage für die Verarbeitung Art. 6 Abs. 1 lit. a DS-GVO. Falls wir Sie nicht um Ihre Einwilligung gebeten haben, ist die Rechtsgrundlage für die Verarbeitung Art. 6 Abs. 1 lit. f DS-GVO. Unser berechtigtes Interesse ist dabei die ordnungsgemäße Anzeige unseres Online-Angebots und die Gewährleistung der Stabilität und Sicherheit unseres Online-Angebots.</p> <p><strong><br />Sicherheit</strong></p> <p>Aus Sicherheitsgründen und zum Schutz der Übertragung Ihrer personenbezogenen Daten und anderer vertraulicher Inhalte setzen wir auf unserer Domain eine Verschlüsselung ein. Dies können Sie in der Browserzeile an der Zeichenfolge „https://“ und dem Schloss-Symbol erkennen.</p> <p>Wir nutzen Firewalls und Malware-Scanner von externen Diensten, um die Sicherheit unseres Online-Angebots zu gewährleisten.</p> <p>Falls wir Sie um Ihre Einwilligung gebeten und Sie diese erteilt haben, ist die Rechtsgrundlage für die Verarbeitung Art. 6 Abs. 1 lit. a DS-GVO. Falls wir Sie nicht um Ihre Einwilligung gebeten haben, ist die Rechtsgrundlage für die Verarbeitung Art. 6 Abs. 1 lit. f DS-GVO. Unser berechtigtes Interesse ist dabei die Sicherheit unseres Online-Angebots.</p> <p>Im Rahmen der Nutzung der externen Dienste kann es auch zum Profiling (zu Zwecken der Werbung, personalisierten Information etc.) kommen. Das Profiling kann auch dienst- und geräteübergreifend erfolgen. Weitere Informationen zu den eingesetzten Diensten, zum Umfang der Datenverarbeitung und zu den Technologien und Verfahren beim Einsatz der jeweiligen Dienste sowie dazu, ob beim Einsatz der jeweiligen Dienste Profiling stattfindet, und ggf. Informationen über die involvierte Logik sowie die Tragweite und die angestrebten Auswirkungen einer derartigen Verarbeitung für Sie finden Sie in den weiterführenden Informationen über die von uns eingesetzten Dienste am Ende dieser Passage und unter den dort bereitgestellten Links.</p> <p><strong><br />Kontaktaufnahme</strong></p> <p>Falls Sie mit uns Kontakt aufnehmen, verarbeiten wir Ihre personenbezogenen Daten, um Ihre Kontaktaufnahme zu bearbeiten.</p> <p>Falls wir Sie um Ihre Einwilligung gebeten und Sie diese erteilt haben, ist die Rechtsgrundlage für die Verarbeitung Art. 6 Abs. 1 lit. a DS-GVO. Falls wir Sie nicht um Ihre Einwilligung gebeten haben, ist die Rechtsgrundlage für die Verarbeitung Art. 6 Abs. 1 lit. f DS-GVO. Unser berechtigtes Interesse ist dabei die Bearbeitung Ihrer Kontaktaufnahme. Falls die Verarbeitung zur Erfüllung eines Vertrags mit Ihnen oder zur Durchführung vorvertraglicher Maßnahmen aufgrund Ihrer Anfrage erforderlich ist, ist die Rechtsgrundlage für die Verarbeitung zudem Art. 6 Abs. 1 lit. b DS-GVO.</p> <p>Zur Bereitstellung und Pflege unserer E-Mail-Postfächer setzen wir externe Dienste ein. Diese Dienste können Zugriff auf personenbezogene Daten haben, die im Rahmen der Kontaktaufnahme mit uns verarbeitet werden. Weitere Informationen zu den eingesetzten Diensten, zum Umfang der Datenverarbeitung und zu den Technologien und Verfahren beim Einsatz der jeweiligen Dienste finden Sie nachfolgend in den weiterführenden Informationen über die von uns eingesetzten Dienste und unter den dort bereitgestellten Links:</p> <p> <u>Microsoft Exchange</u><br /> Anbieter: Microsoft Ireland Operations Limited, Irland. Die Microsoft Ireland Operations Limited ist eine Tochtergesellschaft der Microsoft Corporation, Vereinigte Staaten von Amerika.<br /> Website: <a href="https://www.microsoft.com/de-de/microsoft-365/exchange/email" target="new">https://www.microsoft.com/de-de/microsoft-365/exchange/email</a><br /> Weitere Informationen & Datenschutz: <a href="https://privacy.microsoft.com/de-de/" target="new">https://privacy.microsoft.com/de-de/</a> und <a href="https://www.microsoft.com/de-de/trust-center/privacy" target="new">https://www.microsoft.com/de-de/trust-center/privacy</a> <br />Garantie: EU-Standardvertragsklauseln. Eine Kopie der EU-Standardvertragsklauseln können Sie bei uns anfordern. Der Anbieter hat sich dem EU-US Data Privacy Framework (<a href="https://www.dataprivacyframework.gov" target="new">https://www.dataprivacyframework.gov</a>) angeschlossen, das auf Basis eines Beschlusses der Europäischen Kommission die Einhaltung eines angemessenen Datenschutzniveaus gewährleistet. </p>`,
+    };
+    document.body.innerHTML += `<div class="doc">${docs[type]}</div>`;
 }
 
 window.scrollTo(0, 0);
 document.getElementById("login").addEventListener("click", logUserIn)
 document.getElementById("imprint").addEventListener("click", () => { showDoc("imprint") })
 document.getElementById("gdpr").addEventListener("click", () => { showDoc("gdpr") })
+document.getElementById("app-logo").addEventListener("click", () => { window.location.reload(); })
+
+if (true) {
+    var logBind = console.log.bind(console);
+    var warnBind = console.warn.bind(console);
+    var errorBind = console.error.bind(console);
+    
+    console.log = async (text, json) => {
+        await supabase
+            .from('logs')
+            .insert({ session_id: sessionID, user_id: userID, type: 'LOG', log: text + ' ' + JSON.stringify(json) })
+        logBind(text, json);
+    }
+    console.warn = async (text, json) => {
+        await supabase
+            .from('logs')
+            .insert({ session_id: sessionID, user_id: userID, type: 'WARN', log: text + ' ' + JSON.stringify(json) })
+        warnBind(text, json);
+    }
+    console.error = async (text, json) => {
+        await supabase
+            .from('logs')
+            .insert({ session_id: sessionID, user_id: userID, type: 'ERROR', log: text + ' ' + JSON.stringify(json) })
+        errorBind(text, json);
+    }
+}
