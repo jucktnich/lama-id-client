@@ -287,6 +287,8 @@ document.getElementById("imprint").addEventListener("click", () => { showDoc("im
 document.getElementById("gdpr").addEventListener("click", () => { showDoc("gdpr") })
 document.getElementById("app-logo").addEventListener("click", () => { window.location.reload(); })
 
+console.log(navigator.userAgent);
+
 if (true) {
     var logBind = console.log.bind(console);
     var warnBind = console.warn.bind(console);
