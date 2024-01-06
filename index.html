@@ -4,7 +4,9 @@
 <head>
     <title>Lama ID Foto-Upload</title>
     <meta charset="UTF-8">
-    <meta description="Lama ID ist eine Software mithilfe welcher Schülerausweise mit geringem Arbeitsaufwand hergestellt werden können.">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+        description="Lama ID ist eine Software mithilfe welcher Schülerausweise mit geringem Arbeitsaufwand hergestellt werden können.">
     <link rel="stylesheet" type="text/css" href="styles.css" />
     <link rel="icon" type="image/svg" href="icons/favicon.ico">
 </head>
@@ -18,7 +20,9 @@
             <input type="text" pattern="^[0-9]+$" name="email" id="email" placeholder="ID" required />
             <input type="password" name="password" id="password" placeholder="Code" required />
             <button id="login">Anmelden</button>
-            <div style="display: none;" id="login-error" class="error"><img src="icons/warning.svg"><div>Eingaben fehlerhaft!<br>Bitte ID und Code überprüfen!</div></div>
+            <div style="display: none;" id="login-error" class="error"><img src="icons/warning.svg">
+                <div>Eingaben fehlerhaft!<br>Bitte ID und Code überprüfen!</div>
+            </div>
         </div>
     </div>
     <div style="display: none;" id="app-container">
@@ -30,6 +34,11 @@
         <span id="gdpr">Datenschutz</span>
     </footer>
     <script type="module" src="./app.js"></script>
+    <script type="text/javascript">
+        (function (d, src, c) { var t = d.scripts[d.scripts.length - 1], s = d.createElement('script'); s.id = 'la_x2s6df8d'; s.defer = true; s.src = src; s.onload = s.onreadystatechange = function () { var rs = this.readyState; if (rs && (rs != 'complete') && (rs != 'loaded')) { return; } c(this); }; t.parentElement.insertBefore(s, t.nextSibling); })(document,
+            'https://lamarketing.ladesk.com/scripts/track.js',
+            function (e) { LiveAgent.createButton('1urq61qi', e); });
+    </script>
 </body>
 
 </html>
