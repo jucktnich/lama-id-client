@@ -25,11 +25,11 @@ function uploadButtonUpdate() {
     else document.getElementById('upload-button').disabled = 'true';
 }
 
-function picFinished(pic, frame) {
+function picFinished(pic, frame, size) {
     console.log("Pic finished")
     document.getElementById("consent-1").addEventListener('change', (event) => { currentDisableStatus[1] = event.currentTarget.checked; uploadButtonUpdate(); })
     document.getElementById("consent-2").addEventListener('change', (event) => { currentDisableStatus[2] = event.currentTarget.checked; uploadButtonUpdate(); })
-    document.getElementById("upload-button").addEventListener('click', () => { uploadPicture(pic, frame) })
+    document.getElementById("upload-button").addEventListener('click', () => { uploadPicture(pic, frame, size) })
     currentDisableStatus[0] = true;
     uploadButtonUpdate();
     document.getElementById("photo-upload-img").src = "icons/check.svg"
@@ -67,7 +67,7 @@ function cropPhoto(pic) {
         document.body.style.position = 'relative'
         document.body.style.touchAction = 'auto'
         console.log([leftPic, topPic, rightPic, bottomPic], [pic.width, pic.height])
-        picFinished(pic, [leftPic, topPic, rightPic, bottomPic])
+        picFinished(pic, [leftPic, topPic, rightPic, bottomPic], [pic.width, pic.height])
     })
     let canvas = document.getElementById("crop-canvas")
     let ctx = canvas.getContext('2d')
@@ -232,7 +232,7 @@ function uploadSuccessfulScreen() {
     document.getElementById("go-to-status").addEventListener('click', statusScreen)
 }
 
-async function uploadPicture(pic, frame) {
+async function uploadPicture(pic, frame, size) {
     console.log("Uploading picture")
     document.getElementById("upload-button").disabled = "true";
     document.getElementById("upload-button").innerText = "Lädt...";
@@ -258,7 +258,7 @@ async function uploadPicture(pic, frame) {
         }
         const { error: pictureListError } = await supabase
             .from('picture_list')
-            .insert({ picture_id: id, user_id: userID, frame: frame })
+            .insert({ picture_id: id, user_id: userID, frame: frame, size: size })
         if (pictureListError) {
             console.warn(pictureListError);
             showError();
