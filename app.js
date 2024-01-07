@@ -173,7 +173,7 @@ function uploadPictureScreen() {
 
 async function statusScreen() {
     window.scrollTo(0, 0);
-    appEle.innerHTML = '<div id="status-container"></div>';
+    appEle.innerHTML = '<div id="status-container"><span id="entries-loading">Einträge werden geladen...</span></div>';
     const statusContainer = document.getElementById("status-container");
 
     let { data: pictureList, error: pictureListError } = await supabase
@@ -232,6 +232,7 @@ async function statusScreen() {
         else if (mrStatus === 'ACCEPTED') { status = 'Druckvorbereitung'; color = '#FFEB8A'; }
         else if (mrStatus === 'REJECTED') { status = 'Foto fehlerhaft'; color = '#FFA99F'; }
         else if (mrStatus === 'PRINTED') { status = 'Gedruckt'; color = '#49BCFF'; }
+        document.getElementById("entries-loading").remove()
         if (i === 0 && (mrStatus === 'UPLOADED' || mrStatus === 'REJECTED')) { statusContainer.innerHTML += '<button id="new-picture-button">Neues Bild hochladen</button>'; }
         statusContainer.innerHTML += `<div style="display: flex;">
         <div class="status-div">
@@ -252,10 +253,12 @@ async function statusScreen() {
         } catch {
             console.debug('No new pic button')
         }
+        if (i !== pictureList.length-1) statusContainer.innerHTML += '<span id="entries-loading">Einträge werden geladen...</span>'
     }
 }
 
 async function loggedIn() {
+    console.log(navigator.userAgent);
     const { data: pictureList, error } = await supabase
         .from('picture_list')
         .select()
@@ -397,5 +400,3 @@ if (true) {
         errorBind(text, json);
     }
 }
-
-console.log(navigator.userAgent);
