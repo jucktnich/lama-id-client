@@ -131,6 +131,7 @@ summary {
 
 .status {
     border: 0.5px solid #3E3E3E;
+    max-height: 28px;
     padding: 0.5em;
     min-width: 12em;
     font: normal normal 600 18px/24px Open Sans;
@@ -514,6 +515,7 @@ input:checked+.slider:before {
 
     .status-div {
         grid-template-columns: 1fr;
+        grid-template-rows: 4.4em auto auto;
         height: auto;
         gap: 0;
     }

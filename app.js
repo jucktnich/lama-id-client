@@ -26,9 +26,10 @@ function uploadButtonUpdate() {
 }
 
 function picFinished(pic, frame, size) {
-    console.log("Pic finished")
-    document.getElementById("consent-1").addEventListener('change', (event) => { currentDisableStatus[1] = event.currentTarget.checked; uploadButtonUpdate(); })
-    document.getElementById("consent-2").addEventListener('change', (event) => { currentDisableStatus[2] = event.currentTarget.checked; uploadButtonUpdate(); })
+    console.log("Cropping of the picture finished");
+
+    document.getElementById("consent-1").addEventListener('change', (event) => { currentDisableStatus[1] = event.currentTarget.checked; uploadButtonUpdate(); });
+    document.getElementById("consent-2").addEventListener('change', (event) => { currentDisableStatus[2] = event.currentTarget.checked; uploadButtonUpdate(); });
     document.getElementById("upload-button").addEventListener('click', () => { uploadPicture(pic, frame, size) })
     currentDisableStatus[0] = true;
     uploadButtonUpdate();
@@ -60,7 +61,7 @@ function cropPhoto(pic) {
         let topPic = (((pic.height * cameraZoom) / 2) - (cameraOffset.y - boxDims.y)) / cameraZoom
         let rightPic = (pic.width - (((((pic.width * cameraZoom) / 2) + cameraOffset.x) - (boxDims.right + 2)) / cameraZoom)) - leftPic
         let bottomPic = (pic.height - (((((pic.height * cameraZoom) / 2) + cameraOffset.y) - (boxDims.bottom + 2)) / cameraZoom)) - topPic
-        console.log(/*left, right, top, bottom, */leftPic, rightPic, topPic, bottomPic, cameraOffset, pic)
+        console.log(leftPic, rightPic, topPic, bottomPic, cameraOffset, pic)
         document.getElementById("crop-canvas").remove()
         document.getElementById("pic-border-container").remove()
         document.body.style.overflowY = 'scroll'
@@ -75,7 +76,7 @@ function cropPhoto(pic) {
     let cameraOffset = { x: window.outerWidth / 2, y: window.outerHeight / 2 }
     let cameraZoom = 1
     let MAX_ZOOM = 5
-    let MIN_ZOOM = 0.1
+    let MIN_ZOOM = 0
     let SCROLL_SENSITIVITY = 0.0005
 
     function draw(pic) {
@@ -149,8 +150,11 @@ function cropPhoto(pic) {
         console.log('Pinch last pos', lastPos)
 
         if ((lastPos[0] !== null) && (lastPos[0] > touch1.y && lastPos[1] > touch2.y) || (lastPos[0] < touch1.y && lastPos[1] < touch2.y)) {
-            cameraOffset.y += (((touch1.y - lastPos[0]) + (touch2.y - lastPos[1])) / 2) / cameraZoom
-            console.log('Update offset', (((touch1.y - lastPos[0]) + (touch2.y - lastPos[1])) / 2) / cameraZoom)
+            let change = (((touch1.y - lastPos[0]) + (touch2.y - lastPos[1])) / 2) / cameraZoom
+            change = Math.min(change, 20)
+            change = Math.max(change, -20)
+            cameraOffset.y += change
+            console.log('Update offset', lastPos)
         }
         console.log('Update last pos')
         lastPos[0] = touch1.y
@@ -163,7 +167,10 @@ function cropPhoto(pic) {
             initialPinchDistance = currentDistance
         }
         else {
-            adjustZoom(null, currentDistance / initialPinchDistance)
+            let zoomChange = currentDistance / initialPinchDistance
+            /*zoomChange = Math.min(zoomChange, 0.1)
+            zoomChange = Math.max(zoomChange, -0.1)*/
+            adjustZoom(null, zoomChange)
         }
     }
 
@@ -177,8 +184,8 @@ function cropPhoto(pic) {
                 cameraZoom = zoomFactor * lastZoom
             }
 
-            /*cameraZoom = Math.min(cameraZoom, MAX_ZOOM)
-            cameraZoom = Math.max(cameraZoom, MIN_ZOOM)*/
+            //cameraZoom = Math.min(cameraZoom, MAX_ZOOM)
+            cameraZoom = Math.max(cameraZoom, MIN_ZOOM)
 
             console.log(zoomAmount)
         }
@@ -192,7 +199,6 @@ function cropPhoto(pic) {
     canvas.addEventListener('touchmove', (e) => handleTouch(e, onPointerMove))
     canvas.addEventListener('wheel', (e) => adjustZoom(e.deltaY * SCROLL_SENSITIVITY))
 
-    // Ready, set, go
     draw(pic)
 }
 
@@ -242,7 +248,10 @@ async function uploadPicture(pic, frame, size) {
     c.height = pic.height;
     ctx.drawImage(pic, 0, 0);
     c.toBlob(async (blob) => {
-        const converted = new File([blob], "converted.jpg", { type: "image/jpeg" });
+        let converted = new File([blob], "converted.jpg", { type: "image/jpeg" });
+        /*if (converted.size < 500) {
+            converted = new FileReader().readAsText(document.getElementById("file-upload").files[0])
+        }*/
         const id = uuidv4();
         const { error: uploadError } = await supabase
             .storage
@@ -540,19 +549,19 @@ if (true) {
     console.log = async (text, json) => {
         await supabase
             .from('logs')
-            .insert({ session_id: sessionID, user_id: userID, type: 'LOG', log: text + ' ' + JSON.stringify(json) })
+            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'LOG', log: text + ' ' + JSON.stringify(json) })
         logBind(text, json);
     }
     console.warn = async (text, json) => {
         await supabase
             .from('logs')
-            .insert({ session_id: sessionID, user_id: userID, type: 'WARN', log: text + ' ' + JSON.stringify(json) })
+            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'WARN', log: text + ' ' + JSON.stringify(json) })
         warnBind(text, json);
     }
     console.error = async (text, json) => {
         await supabase
             .from('logs')
-            .insert({ session_id: sessionID, user_id: userID, type: 'ERROR', log: text + ' ' + JSON.stringify(json) })
+            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'ERROR', log: text + ' ' + JSON.stringify(json) })
         errorBind(text, json);
     }
 }
