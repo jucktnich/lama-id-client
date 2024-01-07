@@ -548,6 +548,7 @@ input:checked+.slider:before {
     left: 0;
     width: 100vw;
     height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
 }
 
 #pic-border {
@@ -563,6 +564,7 @@ input:checked+.slider:before {
     #pic-border {
         width: auto;
         height: calc(100vh - 3em);
+        height: calc((var(--vh, 1vh) * 100) - 3em)
     }
 }
 
