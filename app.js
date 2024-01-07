@@ -25,6 +25,15 @@ function uploadButtonUpdate() {
     else document.getElementById('upload-button').disabled = 'true';
 }
 
+function picFinished() {
+    currentDisableStatus[0] = true;
+    uploadButtonUpdate();
+    document.getElementById("photo-upload-img").src = "icons/check.svg"
+    document.getElementById("photo-upload-text").innerText = "Foto erfolgreich hinzugefügt"
+    document.getElementById("photo-upload-text").style.color = "#49BCFF"
+    document.getElementById("photo-upload").classList.add("uploadSuccessful")
+}
+
 function validate() {
     console.log('Validating uploaded file...')
     let URL = window.URL || window.webkitURL;
@@ -37,16 +46,12 @@ function validate() {
         image.onload = function () {
             if (this.width) {
                 console.log('First uploaded file is an image');
-                currentDisableStatus[0] = true;
-                uploadButtonUpdate();
-                document.getElementById("photo-upload-img").src = "icons/check.svg"
-                document.getElementById("photo-upload-text").innerText = "Foto erfolgreich hinzugefügt"
-                document.getElementById("photo-upload-text").style.color = "#49BCFF"
-                document.getElementById("photo-upload").classList.add("uploadSuccessful")
+                picFinished()
             } else {
                 console.warn('First uploaded file is NOT an image');
                 currentDisableStatus[0] = false;
                 uploadButtonUpdate();
+                input.value = null;
             }
         };
 
@@ -67,6 +72,8 @@ function uploadSuccessfulScreen() {
 
 async function uploadPicture() {
     console.log("Uploading picture")
+    document.getElementById("upload-button").disabled = "true";
+    document.getElementById("upload-button").innerText = "Lädt...";
     let URL = window.URL || window.webkitURL;
     let input = document.getElementById("file-upload");
     let file = input.files[0];
@@ -98,7 +105,7 @@ async function uploadPicture() {
                     }
                     const { error: pictureListError } = await supabase
                         .from('picture_list')
-                        .insert({ picture_id: id, user_id: userID })
+                        .insert({ picture_id: id, user_id: userID, frame: [0, 0, 0, 0] })
                     if (pictureListError) {
                         console.warn(pictureListError);
                         showError();
@@ -366,7 +373,7 @@ document.getElementById("imprint").addEventListener("click", () => { showDoc("im
 document.getElementById("gdpr").addEventListener("click", () => { showDoc("gdpr") })
 document.getElementById("app-logo").addEventListener("click", () => { window.location.reload(); })
 
-if (false) {
+if (true) {
     var logBind = console.log.bind(console);
     var warnBind = console.warn.bind(console);
     var errorBind = console.error.bind(console);
