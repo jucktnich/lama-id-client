@@ -43,10 +43,10 @@ function cropPhoto(pic) {
     document.body.style.overflowY = 'hidden'
     document.body.style.position = 'fixed'
     document.body.style.touchAction = 'none'
-    //document.html.style.overscrollBehaviorY = 'none'
-    window.addEventListener("touchstart", (e) => {
+    document.html.style.overscrollBehaviorY = 'none'
+    /*window.addEventListener("touchstart", (e) => {
         e.preventDefault()
-    })
+    })*/
     window.addEventListener("touchmove", (e) => {
         e.preventDefault()
     })
