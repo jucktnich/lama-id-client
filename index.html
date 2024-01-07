@@ -17,7 +17,7 @@
         <div class="center-content" id="big-logo-bg"><img id="big-logo" src="icons/logo-white.svg"></div>
         <div id="login-side">
             <h1>Identität bestätigen</h1>
-            <input type="text" pattern="^[0-9]" inputmode="numeric" name="email" id="email" placeholder="ID" required />
+            <input type="text" pattern="^[0-9]" inputmode="numeric" name="id" id="id-input" placeholder="ID" required />
             <input type="password" name="password" id="password" placeholder="Code" required />
             <button id="login">Anmelden</button>
             <div style="display: none;" id="login-error" class="error"><img src="icons/warning.svg">
@@ -26,7 +26,10 @@
         </div>
     </div>
     <div style="display: none;" id="app-container">
-        <div id="app-logo-container"><img id="app-logo" src="icons/logo-black.svg"></div>
+        <div id="app-logo-container">
+            <img id="app-logo" src="icons/logo-black.svg">
+            <div id="username"><span id="username-text">Eingeloggt als <span id="username-span">Felix</span></span></div>
+        </div>
         <div id="app"></div>
     </div>
     <footer id="footer">

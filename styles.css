@@ -42,7 +42,8 @@ button {
     background: var(--akzente-buttons) 0% 0% no-repeat padding-box;
     opacity: 1;
     border: none;
-    height: 3.5em;
+    min-height: 3.5em;
+    cursor: pointer;
 }
 
 button {
@@ -72,8 +73,17 @@ h2 {
     text-align: left;
     font: normal normal 600 24px/34px Open Sans;
     letter-spacing: 0px;
-    color: #3D3D3D;
     opacity: 1;
+}
+
+summary {
+    padding-top: 1em;
+    color: var(--text);
+    text-align: left;
+    font: normal normal 600 20px/30px Open Sans;
+    letter-spacing: 0px;
+    opacity: 1;
+    cursor: pointer;
 }
 
 .error {
@@ -163,6 +173,27 @@ h2 {
     top: 2em;
     left: 2em;
     width: 5em;
+    cursor: pointer;
+}
+
+#username {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    top: 2em;
+    right: 2em;
+    max-width: calc(100vw - 10em);
+    min-height: 3em;
+}
+
+#username-text {
+    text-align: right;
+    letter-spacing: 0px;
+    opacity: 1;
+}
+
+#username-span {
+    color: var(--akzente-buttons)
 }
 
 footer {
@@ -217,7 +248,9 @@ footer>* {
 
 .photo-upload {
     display: grid;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 1em;
+    padding: 1.5em;
     border: 2px dashed var(--beschriftung);
     background: #F3F3F3 0% 0% no-repeat padding-box;
     border-radius: 10px;
@@ -262,6 +295,13 @@ input[type="file"] {
     opacity: 1;
 }
 
+/*#explainer-button {
+    /*position: absolute;
+    bottom: 0;
+    right: 0;*/
+/*cursor: pointer;
+}*/
+
 #explainer {
     border-left: 3px solid var(--akzente-buttons);
     padding-left: 1.5em;
@@ -269,7 +309,8 @@ input[type="file"] {
 
 #upload-button {
     width: 20em;
-    margin: 5em;
+    margin: 2em;
+    padding: 0 2em;
 }
 
 #upload-button:disabled {
@@ -378,37 +419,102 @@ input:checked+.slider:before {
     border-radius: 50%;
 }
 
-#upload-button {
-    padding: 0 2em;
-}
+@media only screen and (max-width: 1050px) {
+    body {
+        padding-left: 1em;
+        padding-right: 1em;
+    }
 
-@media only screen and (max-width: 800px) {
     #login-div {
+        margin-top: 1em;
         grid-template-columns: 1fr;
+        /*grid-template-rows: auto auto;*/
+        gap: 1em;
     }
 
     #big-logo-bg {
         margin: 0 auto;
+        max-width: 22em;
+        max-height: 22em;
+    }
+
+    #big-logo {
+        max-width: 10em;
     }
 
     #login-side {
         margin: 0 auto;
     }
+
+    #app-logo {
+        top: 1em;
+        left: 1em;
+    }
+
+    #username {
+        top: 1em;
+        right: 1em;
+        max-width: calc(100vw - 8em);
+    }
+
     .grid-w-line {
         display: flex;
         justify-content: center;
     }
+
     .photo-upload {
         width: calc(100vw - 4em);
     }
+
     #explainer {
         display: none;
     }
+
     .lr {
         max-width: calc(100vw - 3em);
     }
+
+    h1 {
+        font: normal normal bold 30px/40px Open Sans;
+    }
+}
+
+@media only screen and (max-width: 750px) {
+    .grid-w-line {
+        display: flex;
+        justify-content: center;
+    }
+
+    .photo-upload {
+        width: calc(100vw - 4em);
+    }
+
+    #explainer {
+        display: none;
+    }
+
+    .lr {
+        max-width: calc(100vw - 3em);
+    }
+
     .status-div {
         grid-template-columns: 1fr;
         gap: 0;
+    }
+}
+
+@media only screen and (max-width: 672px) {
+    #login-div {
+        grid-template-columns: 1fr;
+        grid-template-rows: calc(100vw - 3em) auto;
+    }
+
+    #big-logo-bg {
+        width: calc(100vw - 3em);
+        height: calc(100vw - 3em);
+    }
+
+    #big-logo {
+        width: calc(calc(100vw - 3em) * 0.466)
     }
 }
