@@ -43,6 +43,7 @@ function cropPhoto(pic) {
     document.body.style.overflowY = 'hidden'
     document.body.style.position = 'fixed'
     appEle.innerHTML += '<canvas id="crop-canvas"></canvas><div class="center-content" id="pic-border-container"><div id="pic-border"></div><button id="pic-border-btn">OK</button></div>'
+    document.getElementById('pic-border-container').style.height = window.innerHeight + "px"
     document.getElementById("pic-border-btn").addEventListener('click', () => {
         document.getElementById("crop-canvas").remove()
         document.getElementById("pic-border-container").remove()

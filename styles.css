@@ -556,7 +556,6 @@ input:checked+.slider:before {
     border: 2px solid var(--akzente-buttons);
     width: calc(100vw - 3em);
     z-index: 996;
-    /*height: calc((100vw - 3em) * 35 / 24);*/
     aspect-ratio: 24/35;
 }
 
