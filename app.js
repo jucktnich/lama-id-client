@@ -41,11 +41,13 @@ function picFinished(pic) {
 function cropPhoto(pic) {
     document.querySelector('[id^="b_1urq61qi_"]').children[0].style.zIndex = '990';
     document.body.style.overflowY = 'hidden'
+    document.body.style.position = 'fixed'
     appEle.innerHTML += '<canvas id="crop-canvas"></canvas><div class="center-content" id="pic-border-container"><div id="pic-border"></div><button id="pic-border-btn">OK</button></div>'
     document.getElementById("pic-border-btn").addEventListener('click', () => {
         document.getElementById("crop-canvas").remove()
         document.getElementById("pic-border-container").remove()
         document.body.style.overflowY = 'scroll'
+        document.body.style.position = 'relative'
         picFinished(pic)
     })
     let canvas = document.getElementById("crop-canvas")
@@ -144,8 +146,8 @@ function cropPhoto(pic) {
                 cameraZoom = zoomFactor * lastZoom
             }
 
-            cameraZoom = Math.min(cameraZoom, MAX_ZOOM)
-            cameraZoom = Math.max(cameraZoom, MIN_ZOOM)
+            /*cameraZoom = Math.min(cameraZoom, MAX_ZOOM)
+            cameraZoom = Math.max(cameraZoom, MIN_ZOOM)*/
 
             console.log(zoomAmount)
         }
@@ -161,7 +163,6 @@ function cropPhoto(pic) {
 
     // Ready, set, go
     draw(pic)
-    //picFinished()
 }
 
 function validate() {
