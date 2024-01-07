@@ -25,11 +25,11 @@ function uploadButtonUpdate() {
     else document.getElementById('upload-button').disabled = 'true';
 }
 
-function picFinished(pic) {
+function picFinished(pic, frame) {
     console.log("Pic finished")
     document.getElementById("consent-1").addEventListener('change', (event) => { currentDisableStatus[1] = event.currentTarget.checked; uploadButtonUpdate(); })
     document.getElementById("consent-2").addEventListener('change', (event) => { currentDisableStatus[2] = event.currentTarget.checked; uploadButtonUpdate(); })
-    document.getElementById("upload-button").addEventListener('click', () => { uploadPicture(pic) })
+    document.getElementById("upload-button").addEventListener('click', () => { uploadPicture(pic, frame) })
     currentDisableStatus[0] = true;
     uploadButtonUpdate();
     document.getElementById("photo-upload-img").src = "icons/check.svg"
@@ -47,12 +47,27 @@ function cropPhoto(pic) {
     let vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
     document.getElementById("pic-border-btn").addEventListener('click', () => {
+        let boxDims = document.getElementById("pic-border").getBoundingClientRect();
+        console.log(boxDims)
+        /*let left = (window.outerWidth - boxDims.width) / 2;
+        let right = left + boxDims.width;
+        let top = (window.outerHeight - boxDims.height) / 2;
+        let bottom = top + boxDims.height;*/
+        /*let leftPic = (pic.width / 2) - ((boxDims.left - (cameraOffset.x*cameraZoom))/* / cameraZoom*//*)
+        let topPic = (pic.height / 2) - ((boxDims.top - (cameraOffset.y*cameraZoom))/* / cameraZoom*///)
+        console.log(ctx)
+        let leftPic = (((pic.width * cameraZoom) / 2) - (cameraOffset.x - boxDims.x)) / cameraZoom
+        let topPic = (((pic.height * cameraZoom) / 2) - (cameraOffset.y - boxDims.y)) / cameraZoom
+        let rightPic = (pic.width - (((((pic.width * cameraZoom) / 2) + cameraOffset.x) - (boxDims.right + 2)) / cameraZoom)) - leftPic
+        let bottomPic = (pic.height - (((((pic.height * cameraZoom) / 2) + cameraOffset.y) - (boxDims.bottom + 2)) / cameraZoom)) - topPic
+        console.log(/*left, right, top, bottom, */leftPic, rightPic, topPic, bottomPic, cameraOffset, pic)
         document.getElementById("crop-canvas").remove()
         document.getElementById("pic-border-container").remove()
         document.body.style.overflowY = 'scroll'
         document.body.style.position = 'relative'
         document.body.style.touchAction = 'auto'
-        picFinished(pic)
+        console.log([leftPic, topPic, rightPic, bottomPic], [pic.width, pic.height])
+        picFinished(pic, [leftPic, topPic, rightPic, bottomPic])
     })
     let canvas = document.getElementById("crop-canvas")
     let ctx = canvas.getContext('2d')
@@ -73,7 +88,7 @@ function cropPhoto(pic) {
         ctx.translate(-window.outerWidth / 2 + cameraOffset.x, -window.outerHeight / 2 + cameraOffset.y)
         ctx.clearRect(0, 0, window.outerWidth, window.outerHeight)
 
-        ctx.drawImage(pic, -(pic.width / 2), -(pic.height / 2));
+        ctx.drawImage(pic, -((pic.width/* * cameraZoom*/) / 2), -((pic.height/* * cameraZoom*/) / 2));
 
         requestAnimationFrame(() => { draw(pic) })
     }
@@ -134,8 +149,8 @@ function cropPhoto(pic) {
         console.log('Pinch last pos', lastPos)
 
         if ((lastPos[0] !== null) && (lastPos[0] > touch1.y && lastPos[1] > touch2.y) || (lastPos[0] < touch1.y && lastPos[1] < touch2.y)) {
-            cameraOffset.y += (((touch1.y - lastPos[0]) + (touch2.y - lastPos[1])) / 2 ) / cameraZoom
-            console.log('Update offset', (((touch1.y - lastPos[0]) + (touch2.y - lastPos[1])) / 2 ) / cameraZoom)
+            cameraOffset.y += (((touch1.y - lastPos[0]) + (touch2.y - lastPos[1])) / 2) / cameraZoom
+            console.log('Update offset', (((touch1.y - lastPos[0]) + (touch2.y - lastPos[1])) / 2) / cameraZoom)
         }
         console.log('Update last pos')
         lastPos[0] = touch1.y
@@ -217,7 +232,7 @@ function uploadSuccessfulScreen() {
     document.getElementById("go-to-status").addEventListener('click', statusScreen)
 }
 
-async function uploadPicture(pic) {
+async function uploadPicture(pic, frame) {
     console.log("Uploading picture")
     document.getElementById("upload-button").disabled = "true";
     document.getElementById("upload-button").innerText = "Lädt...";
@@ -243,7 +258,7 @@ async function uploadPicture(pic) {
         }
         const { error: pictureListError } = await supabase
             .from('picture_list')
-            .insert({ picture_id: id, user_id: userID, frame: [0, 0, 0, 0] })
+            .insert({ picture_id: id, user_id: userID, frame: frame })
         if (pictureListError) {
             console.warn(pictureListError);
             showError();
@@ -357,6 +372,9 @@ async function statusScreen() {
             return;
         }
         let imageUrl = URL.createObjectURL(file);
+        let frame = pictureList[i].frame
+        let width = pictureList[i].size[0]
+        let height = pictureList[i].size[1]
         let status, color;
         if (mrStatus === 'UPLOADED' || mrStatus === 'CLARIFICATION') { status = 'Foto hochgeladen'; color = '#95E567'; }
         else if (mrStatus === 'WITHDRAWN') { status = 'Foto gelöscht'; color = '#bbb'; }
@@ -367,7 +385,7 @@ async function statusScreen() {
         if (i === 0 && (mrStatus === 'UPLOADED' || mrStatus === 'REJECTED')) { statusContainer.innerHTML += '<button disabled id="new-picture-button">Neues Foto hochladen</button>'; }
         statusContainer.innerHTML += `<div style="display: flex;">
         <div class="status-div">
-        <img class="status-img" src="${imageUrl}">
+        <img class="status-img" src="${imageUrl}" style="margin-top: -${(4.4/frame[3])*frame[1]}em; height: ${(4.4/frame[3])*height}em; margin-left: -${(3.02/frame[2])*frame[0]}em; width: ${((3.02/frame[2])*width)/*+3.02*/}em; clip-path: polygon(${(frame[0]/width)*100}% ${(frame[1]/height)*100}%, ${((frame[2]+frame[0])/width)*100}% ${(frame[1]/height)*100}%, ${((frame[2]+frame[0])/width)*100}% ${((frame[3]+frame[1])/height)*100}%, ${((frame[0]/width)*100)}% ${((frame[3]+frame[1])/height)*100}%);">
         <div>
         <span>Schülerausweis 20${user.public_id.toString().slice(3, 5)}</span>
         <br>

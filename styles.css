@@ -112,7 +112,8 @@ summary {
 .status-div {
     background-color: #7E7E7E1A;
     display: grid;
-    grid-template-columns: auto auto auto;
+    grid-template-columns: 3.02em auto auto;
+    height: 4.4em;
     grid-gap: 1.5em;
     padding: 1em;
     color: var(--text);
@@ -341,8 +342,9 @@ input[type="file"] {
 }
 
 .doc {
-    min-width: calc(100vw -3em);
-    min-height: 100%;
+    z-index: 970;
+    min-width: calc(100vw - 3em);
+    min-height: 100vh;
     background-color: white;
     position: absolute;
     padding: 1em;
@@ -512,6 +514,7 @@ input:checked+.slider:before {
 
     .status-div {
         grid-template-columns: 1fr;
+        height: auto;
         gap: 0;
     }
 }
@@ -530,6 +533,10 @@ input:checked+.slider:before {
     #big-logo {
         width: calc(calc(100vw - 3em) * 0.466)
     }
+}
+
+#new-picture-button:disabled {
+    background: var(--disabled)
 }
 
 #crop-canvas {
