@@ -131,12 +131,15 @@ function cropPhoto(pic) {
         let touch1 = { x: e.touches[0].clientX, y: e.touches[0].clientY }
         let touch2 = { x: e.touches[1].clientX, y: e.touches[1].clientY }
 
-        if (lastPos[0] === null) {
-            lastPos[0] = touch1.y
-            lastPos[1] = touch2.y
-        } else if ((lastPos[0] > touch1.y && lastPos[1] > touch2.y) || (lastPos[0] < touch1.y && lastPos[1] < touch2.y)) {
+        console.log('Pinch last pos', lastPos)
+
+        if ((lastPos[0] !== null) && (lastPos[0] > touch1.y && lastPos[1] > touch2.y) || (lastPos[0] < touch1.y && lastPos[1] < touch2.y)) {
             cameraOffset.y += (((touch1.y - lastPos[0]) + (touch2.y - lastPos[1])) / 2 ) / cameraZoom
+            console.log('Update offset', (((touch1.y - lastPos[0]) + (touch2.y - lastPos[1])) / 2 ) / cameraZoom)
         }
+        console.log('Update last pos')
+        lastPos[0] = touch1.y
+        lastPos[1] = touch2.y
 
         // This is distance squared, but no need for an expensive sqrt as it's only used in ratio
         let currentDistance = (touch1.x - touch2.x) ** 2 + (touch1.y - touch2.y) ** 2
