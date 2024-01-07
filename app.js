@@ -42,6 +42,7 @@ function cropPhoto(pic) {
     document.querySelector('[id^="b_1urq61qi_"]').children[0].style.zIndex = '990';
     document.body.style.overflowY = 'hidden'
     document.body.style.position = 'fixed'
+    document.body.style.touchAction = 'none'
     appEle.innerHTML += '<canvas id="crop-canvas"></canvas><div class="center-content" id="pic-border-container"><div id="pic-border"></div><button id="pic-border-btn">OK</button></div>'
     let vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -50,6 +51,7 @@ function cropPhoto(pic) {
         document.getElementById("pic-border-container").remove()
         document.body.style.overflowY = 'scroll'
         document.body.style.position = 'relative'
+        document.body.style.touchAction = 'auto'
         picFinished(pic)
     })
     let canvas = document.getElementById("crop-canvas")
@@ -350,7 +352,7 @@ async function statusScreen() {
         else if (mrStatus === 'REJECTED') { status = 'Foto fehlerhaft'; color = '#FFA99F'; }
         else if (mrStatus === 'PRINTED') { status = 'Gedruckt'; color = '#49BCFF'; }
         document.getElementById("entries-loading").remove()
-        if (i === 0 && (mrStatus === 'UPLOADED' || mrStatus === 'REJECTED')) { statusContainer.innerHTML += '<button id="new-picture-button">Neues Foto hochladen</button>'; }
+        if (i === 0 && (mrStatus === 'UPLOADED' || mrStatus === 'REJECTED')) { statusContainer.innerHTML += '<button disabled id="new-picture-button">Neues Foto hochladen</button>'; }
         statusContainer.innerHTML += `<div style="display: flex;">
         <div class="status-div">
         <img class="status-img" src="${imageUrl}">
@@ -366,7 +368,10 @@ async function statusScreen() {
         if (pictureList[i].rejection_reason) statusContainer.innerHTML += `<div style="display: grid; grid-template-columns: auto auto;"><div></div><div class="error"><img src="icons/warning.svg"><span class="rejection-error"><b>Foto wurde abgelehnt:</b><br>${pictureList[i].rejection_reason}</span></div></div>`
         statusContainer.innerHTML += '</div>'
         try {
-            document.getElementById('new-picture-button').addEventListener('click', uploadPictureScreen);
+            if (i === pictureList.length - 1) {
+                document.getElementById('new-picture-button').addEventListener('click', uploadPictureScreen);
+                document.getElementById('new-picture-button').removeAttribute("disabled")
+            }
         } catch {
             console.debug('No new pic button')
         }
