@@ -25,13 +25,143 @@ function uploadButtonUpdate() {
     else document.getElementById('upload-button').disabled = 'true';
 }
 
-function picFinished() {
+function picFinished(pic) {
+    console.log("Pic finished")
+    document.getElementById("consent-1").addEventListener('change', (event) => { currentDisableStatus[1] = event.currentTarget.checked; uploadButtonUpdate(); })
+    document.getElementById("consent-2").addEventListener('change', (event) => { currentDisableStatus[2] = event.currentTarget.checked; uploadButtonUpdate(); })
+    document.getElementById("upload-button").addEventListener('click', () => { uploadPicture(pic) })
     currentDisableStatus[0] = true;
     uploadButtonUpdate();
     document.getElementById("photo-upload-img").src = "icons/check.svg"
     document.getElementById("photo-upload-text").innerText = "Foto erfolgreich hinzugefügt"
     document.getElementById("photo-upload-text").style.color = "#49BCFF"
     document.getElementById("photo-upload").classList.add("uploadSuccessful")
+}
+
+function cropPhoto(pic) {
+    document.querySelector('[id^="b_1urq61qi_"]').children[0].style.zIndex = '990';
+    document.body.style.overflowY = 'hidden'
+    appEle.innerHTML += '<canvas id="crop-canvas"></canvas><div class="center-content" id="pic-border-container"><div id="pic-border"></div><button id="pic-border-btn">OK</button></div>'
+    document.getElementById("pic-border-btn").addEventListener('click', () => {
+        document.getElementById("crop-canvas").remove()
+        document.getElementById("pic-border-container").remove()
+        document.body.style.overflowY = 'scroll'
+        picFinished(pic)
+    })
+    let canvas = document.getElementById("crop-canvas")
+    let ctx = canvas.getContext('2d')
+
+    let cameraOffset = { x: window.outerWidth / 2, y: window.outerHeight / 2 }
+    let cameraZoom = 1
+    let MAX_ZOOM = 5
+    let MIN_ZOOM = 0.1
+    let SCROLL_SENSITIVITY = 0.0005
+
+    function draw(pic) {
+        canvas.width = window.outerWidth
+        canvas.height = window.outerHeight
+
+        // Translate to the canvas centre before zooming - so you'll always zoom on what you're looking directly at
+        ctx.translate(window.outerWidth / 2, window.outerHeight / 2)
+        ctx.scale(cameraZoom, cameraZoom)
+        ctx.translate(-window.outerWidth / 2 + cameraOffset.x, -window.outerHeight / 2 + cameraOffset.y)
+        ctx.clearRect(0, 0, window.outerWidth, window.outerHeight)
+
+        ctx.drawImage(pic, -(pic.width / 2), -(pic.height / 2));
+
+        requestAnimationFrame(() => { draw(pic) })
+    }
+
+    // Gets the relevant location from a mouse or single touch event
+    function getEventLocation(e) {
+        if (e.touches && e.touches.length == 1) {
+            return { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        }
+        else if (e.clientX && e.clientY) {
+            return { x: e.clientX, y: e.clientY }
+        }
+    }
+
+    let isDragging = false
+    let dragStart = { x: 0, y: 0 }
+
+    function onPointerDown(e) {
+        isDragging = true
+        dragStart.x = getEventLocation(e).x / cameraZoom - cameraOffset.x
+        dragStart.y = getEventLocation(e).y / cameraZoom - cameraOffset.y
+    }
+
+    function onPointerUp(e) {
+        isDragging = false
+        initialPinchDistance = null
+        lastZoom = cameraZoom
+    }
+
+    function onPointerMove(e) {
+        if (isDragging) {
+            cameraOffset.x = getEventLocation(e).x / cameraZoom - dragStart.x
+            cameraOffset.y = getEventLocation(e).y / cameraZoom - dragStart.y
+        }
+    }
+
+    function handleTouch(e, singleTouchHandler) {
+        if (e.touches.length == 1) {
+            singleTouchHandler(e)
+        }
+        else if (e.type == "touchmove" && e.touches.length == 2) {
+            isDragging = false
+            handlePinch(e)
+        }
+    }
+
+    let initialPinchDistance = null
+    let lastZoom = cameraZoom
+
+    function handlePinch(e) {
+        e.preventDefault()
+
+        let touch1 = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        let touch2 = { x: e.touches[1].clientX, y: e.touches[1].clientY }
+
+        // This is distance squared, but no need for an expensive sqrt as it's only used in ratio
+        let currentDistance = (touch1.x - touch2.x) ** 2 + (touch1.y - touch2.y) ** 2
+
+        if (initialPinchDistance == null) {
+            initialPinchDistance = currentDistance
+        }
+        else {
+            adjustZoom(null, currentDistance / initialPinchDistance)
+        }
+    }
+
+    function adjustZoom(zoomAmount, zoomFactor) {
+        if (!isDragging) {
+            if (zoomAmount) {
+                cameraZoom += zoomAmount
+            }
+            else if (zoomFactor) {
+                console.log(zoomFactor)
+                cameraZoom = zoomFactor * lastZoom
+            }
+
+            cameraZoom = Math.min(cameraZoom, MAX_ZOOM)
+            cameraZoom = Math.max(cameraZoom, MIN_ZOOM)
+
+            console.log(zoomAmount)
+        }
+    }
+
+    canvas.addEventListener('mousedown', onPointerDown)
+    canvas.addEventListener('touchstart', (e) => handleTouch(e, onPointerDown))
+    canvas.addEventListener('mouseup', onPointerUp)
+    canvas.addEventListener('touchend', (e) => handleTouch(e, onPointerUp))
+    canvas.addEventListener('mousemove', onPointerMove)
+    canvas.addEventListener('touchmove', (e) => handleTouch(e, onPointerMove))
+    canvas.addEventListener('wheel', (e) => adjustZoom(e.deltaY * SCROLL_SENSITIVITY))
+
+    // Ready, set, go
+    draw(pic)
+    //picFinished()
 }
 
 function validate() {
@@ -46,7 +176,7 @@ function validate() {
         image.onload = function () {
             if (this.width) {
                 console.log('First uploaded file is an image');
-                picFinished()
+                cropPhoto(this)
             } else {
                 console.warn('First uploaded file is NOT an image');
                 currentDisableStatus[0] = false;
@@ -70,56 +200,40 @@ function uploadSuccessfulScreen() {
     document.getElementById("go-to-status").addEventListener('click', statusScreen)
 }
 
-async function uploadPicture() {
+async function uploadPicture(pic) {
     console.log("Uploading picture")
     document.getElementById("upload-button").disabled = "true";
     document.getElementById("upload-button").innerText = "Lädt...";
-    let URL = window.URL || window.webkitURL;
-    let input = document.getElementById("file-upload");
-    let file = input.files[0];
-
-    if (file) {
-        var image = new Image();
-
-        image.onload = function () {
-            if (this.width) {
-                let c = document.createElement("canvas"),
-                    ctx = c.getContext("2d");
-                c.width = this.width;
-                c.height = this.height;
-                ctx.drawImage(this, 0, 0);
-                c.toBlob(async (blob) => {
-                    const converted = new File([blob], "converted.jpg", { type: "image/jpeg" });
-                    const id = uuidv4();
-                    const { error: uploadError } = await supabase
-                        .storage
-                        .from('pictures')
-                        .upload(userID + '/' + id + '.jpg', converted, {
-                            cacheControl: '3600',
-                            upsert: false
-                        })
-                    if (uploadError) {
-                        console.warn(uploadError);
-                        showError('Fehler beim Upload des Fotos. Wenn dieser Fehler häufiger auftritt, kontaktiere bitte den Support.');
-                        return;
-                    }
-                    const { error: pictureListError } = await supabase
-                        .from('picture_list')
-                        .insert({ picture_id: id, user_id: userID, frame: [0, 0, 0, 0] })
-                    if (pictureListError) {
-                        console.warn(pictureListError);
-                        showError();
-                        return;
-                    }
-                    uploadSuccessfulScreen()
-                }, "image/jpeg", 1);
-            } else {
-                console.warn('First uploaded file is NOT an image');
-            }
-        };
-
-        image.src = URL.createObjectURL(file);
-    }
+    let c = document.createElement("canvas"),
+        ctx = c.getContext("2d");
+    c.width = pic.width;
+    c.height = pic.height;
+    ctx.drawImage(pic, 0, 0);
+    c.toBlob(async (blob) => {
+        const converted = new File([blob], "converted.jpg", { type: "image/jpeg" });
+        const id = uuidv4();
+        const { error: uploadError } = await supabase
+            .storage
+            .from('pictures')
+            .upload(userID + '/' + id + '.jpg', converted, {
+                cacheControl: '3600',
+                upsert: false
+            })
+        if (uploadError) {
+            console.warn(uploadError);
+            showError('Fehler beim Upload des Fotos. Wenn dieser Fehler häufiger auftritt, kontaktiere bitte den Support.');
+            return;
+        }
+        const { error: pictureListError } = await supabase
+            .from('picture_list')
+            .insert({ picture_id: id, user_id: userID, frame: [0, 0, 0, 0] })
+        if (pictureListError) {
+            console.warn(pictureListError);
+            showError();
+            return;
+        }
+        uploadSuccessfulScreen()
+    }, "image/jpeg", 1);
 }
 
 function uploadPictureScreen() {
@@ -152,7 +266,7 @@ function uploadPictureScreen() {
     <br>
     <div class="lr"><label class="switch"><input type="checkbox" id="consent-1"><span class="slider round"></span></label><span>Ich erteile meiner Schule die Vollmacht, im Falle von Problemen meine Kontakt-Daten an Lama-ID auszuhändigen.</span></div><br>
     <div class="lr"><label class="switch"><input type="checkbox" id="consent-2"><span class="slider round"></span></label><span>Ich habe die Datenschutz-Bedingungen zum Foto-Upload gelesen und bin einverstanden.</span></div></div>
-    <div class="center-content"><button id="upload-button" disabled>Bild hochladen</button></div></div>`
+    <div class="center-content"><button id="upload-button" disabled>Foto hochladen</button></div></div>`
     const photoUpload = document.getElementById("photo-upload")
     photoUpload.addEventListener('dragover', (ev) => {
         ev.preventDefault();
@@ -233,7 +347,7 @@ async function statusScreen() {
         else if (mrStatus === 'REJECTED') { status = 'Foto fehlerhaft'; color = '#FFA99F'; }
         else if (mrStatus === 'PRINTED') { status = 'Gedruckt'; color = '#49BCFF'; }
         document.getElementById("entries-loading").remove()
-        if (i === 0 && (mrStatus === 'UPLOADED' || mrStatus === 'REJECTED')) { statusContainer.innerHTML += '<button id="new-picture-button">Neues Bild hochladen</button>'; }
+        if (i === 0 && (mrStatus === 'UPLOADED' || mrStatus === 'REJECTED')) { statusContainer.innerHTML += '<button id="new-picture-button">Neues Foto hochladen</button>'; }
         statusContainer.innerHTML += `<div style="display: flex;">
         <div class="status-div">
         <img class="status-img" src="${imageUrl}">
@@ -242,7 +356,7 @@ async function statusScreen() {
         <br>
         <span>${user.class.name}, ${user.school.name}</span>
         <br>
-        <span><b>Bild vom:</b> ${new Date(pictureList[i].created_at).toLocaleString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+        <span><b>Foto vom:</b> ${new Date(pictureList[i].created_at).toLocaleString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
         </div>
         <p class="status" style="background: ${color};">${status}</p>
         </div>`;
@@ -253,7 +367,7 @@ async function statusScreen() {
         } catch {
             console.debug('No new pic button')
         }
-        if (i !== pictureList.length-1) statusContainer.innerHTML += '<span id="entries-loading">Einträge werden geladen...</span>'
+        if (i !== pictureList.length - 1) statusContainer.innerHTML += '<span id="entries-loading">Einträge werden geladen...</span>'
     }
 }
 
@@ -298,12 +412,16 @@ async function loggedIn() {
 }
 
 async function logUserIn() {
+    document.getElementById("login").disabled = "true";
+    document.getElementById("login").innerText = "Anmelden...";
     const { data, error } = await supabase.auth.signInWithPassword({
         email: document.getElementById('id-input').value + '@lama-id.de',
         password: document.getElementById('password').value,
     });
     if (error) {
         console.warn(error);
+        document.getElementById("login").removeAttribute('disabled')
+        document.getElementById("login").innerText = "Anmelden";
         document.getElementById('login-error').style.display = 'grid';
     } else {
         userID = data.user.id;
