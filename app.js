@@ -135,7 +135,7 @@ function cropPhoto(pic) {
             lastPos[0] = touch1.y
             lastPos[1] = touch2.y
         } else if ((lastPos[0] > touch1.y && lastPos[1] > touch2.y) || (lastPos[0] < touch1.y && lastPos[1] < touch2.y)) {
-            cameraOffset.y += (((touch1.y - lastPos[0]) + (touch2.y - lastPos[1])) / 2 ) / camerZoom
+            cameraOffset.y += (((touch1.y - lastPos[0]) + (touch2.y - lastPos[1])) / 2 ) / cameraZoom
         }
 
         // This is distance squared, but no need for an expensive sqrt as it's only used in ratio
