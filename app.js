@@ -39,57 +39,84 @@ function picFinished(pic, frame, size) {
     document.getElementById("photo-upload").classList.add("uploadSuccessful")
 }
 
+function closeCanvas() {
+    console.log('Closing canvas')
+    document.getElementById("crop-canvas").remove()
+    document.getElementById("pic-border-container").remove()
+    document.body.style.overflowY = 'scroll'
+    document.body.style.position = 'relative'
+    document.body.style.touchAction = 'auto'
+}
+
 function cropPhoto(pic) {
     document.querySelector('[id^="b_1urq61qi_"]').children[0].style.zIndex = '990';
     document.body.style.overflowY = 'hidden'
     document.body.style.position = 'fixed'
     document.body.style.touchAction = 'none'
-    appEle.innerHTML += '<canvas id="crop-canvas"></canvas><div class="center-content" id="pic-border-container"><div id="pic-border"></div><button id="pic-border-btn">OK</button></div>'
-    let vh = window.innerHeight * 0.01;
+
+    window.addEventListener("resize", () => {
+        if (document.getElementById("crop-canvas")) {
+            closeCanvas();
+            cropPhoto(pic);
+        }
+    })
+
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    let vh = windowHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
+    console.log(windowHeight, windowWidth)
+
+    appEle.innerHTML += '<canvas id="crop-canvas"></canvas><div class="center-content" id="pic-border-container"><div id="pic-border"></div><button id="pic-border-btn">OK</button></div>'
+    const borderDims = document.getElementById("pic-border").getBoundingClientRect();
     document.getElementById("pic-border-btn").addEventListener('click', () => {
-        let boxDims = document.getElementById("pic-border").getBoundingClientRect();
-        console.log(boxDims)
-        /*let left = (window.outerWidth - boxDims.width) / 2;
+        /*let left = (windowWidth - boxDims.width) / 2;
         let right = left + boxDims.width;
-        let top = (window.outerHeight - boxDims.height) / 2;
+        let top = (windowHeight - boxDims.height) / 2;
         let bottom = top + boxDims.height;*/
         /*let leftPic = (pic.width / 2) - ((boxDims.left - (cameraOffset.x*cameraZoom))/* / cameraZoom*//*)
         let topPic = (pic.height / 2) - ((boxDims.top - (cameraOffset.y*cameraZoom))/* / cameraZoom*///)
-        console.log(ctx)
-        let leftPic = (((pic.width * cameraZoom) / 2) - (cameraOffset.x - boxDims.x)) / cameraZoom
-        let topPic = (((pic.height * cameraZoom) / 2) - (cameraOffset.y - boxDims.y)) / cameraZoom
-        let rightPic = (pic.width - (((((pic.width * cameraZoom) / 2) + cameraOffset.x) - (boxDims.right + 2)) / cameraZoom)) - leftPic
-        let bottomPic = (pic.height - (((((pic.height * cameraZoom) / 2) + cameraOffset.y) - (boxDims.bottom + 2)) / cameraZoom)) - topPic
-        console.log(leftPic, rightPic, topPic, bottomPic, cameraOffset, pic)
-        document.getElementById("crop-canvas").remove()
-        document.getElementById("pic-border-container").remove()
-        document.body.style.overflowY = 'scroll'
-        document.body.style.position = 'relative'
-        document.body.style.touchAction = 'auto'
-        console.log([leftPic, topPic, rightPic, bottomPic], [pic.width, pic.height])
+        //let leftPic = (((pic.width * cameraZoom) / 2) - (cameraOffset.x / cameraZoom - borderDims.x)) / cameraZoom
+        //let leftPic = -(((cameraOffset.x - windowWidth / 2) / cameraZoom) + (pic.width * cameraZoom - borderDims.width) / 2) * cameraZoom
+        //let topPic = (((pic.height * cameraZoom) / 2) - (cameraOffset.y - borderDims.y)) / cameraZoom
+        let leftPic = ((((windowWidth / 2) - cameraOffset.x) * cameraZoom) - (((windowWidth / 2) -borderDims.left) - ((pic.width * cameraZoom) / 2))) / cameraZoom
+        let topPic = ((((windowHeight / 2) - cameraOffset.y) * cameraZoom) - (((windowHeight / 2) -borderDims.top) - ((pic.height * cameraZoom) / 2))) / cameraZoom
+        let rightPic = borderDims.width / cameraZoom
+        let bottomPic = borderDims.height / cameraZoom
+        //let topPic = (((cameraOffset.y - windowHeight / 2) / cameraZoom) + (pic.height * cameraZoom - borderDims.height) / 2) * cameraZoom
+        //let rightPic = (pic.width - (((((pic.width * cameraZoom) / 2) + cameraOffset.x) - (borderDims.right)) / cameraZoom)) - leftPic
+        //let bottomPic = (pic.height - (((((pic.height * cameraZoom) / 2) + cameraOffset.y) - (borderDims.bottom)) / cameraZoom)) - topPic
+        closeCanvas()
+        console.log([leftPic, topPic, rightPic, bottomPic], [pic.width, pic.height], cameraZoom, borderDims, cameraOffset, pic)
         picFinished(pic, [leftPic, topPic, rightPic, bottomPic], [pic.width, pic.height])
     })
+
     let canvas = document.getElementById("crop-canvas")
     let ctx = canvas.getContext('2d')
 
-    let cameraOffset = { x: window.outerWidth / 2, y: window.outerHeight / 2 }
+    let cameraOffset = { x: windowWidth / 2, y: windowHeight / 2 }
     let cameraZoom = 1
     let MAX_ZOOM = 5
     let MIN_ZOOM = 0
     let SCROLL_SENSITIVITY = 0.0005
 
+    if ((pic.width / pic.height) < 24 / 35) {
+        cameraZoom = document.getElementById("pic-border").getBoundingClientRect().width / pic.width;
+    } else {
+        cameraZoom = document.getElementById("pic-border").getBoundingClientRect().height / pic.height;
+    }
+
     function draw(pic) {
-        canvas.width = window.outerWidth
-        canvas.height = window.outerHeight
+        canvas.width = windowWidth
+        canvas.height = windowHeight
 
         // Translate to the canvas centre before zooming - so you'll always zoom on what you're looking directly at
-        ctx.translate(window.outerWidth / 2, window.outerHeight / 2)
+        ctx.translate(windowWidth / 2, windowHeight / 2)
         ctx.scale(cameraZoom, cameraZoom)
-        ctx.translate(-window.outerWidth / 2 + cameraOffset.x, -window.outerHeight / 2 + cameraOffset.y)
-        ctx.clearRect(0, 0, window.outerWidth, window.outerHeight)
+        ctx.translate(-windowWidth / 2/* + cameraOffset.x*/, -windowHeight / 2/* + cameraOffset.y*/)
+        ctx.clearRect(0, 0, windowWidth, windowHeight)
 
-        ctx.drawImage(pic, -((pic.width/* * cameraZoom*/) / 2), -((pic.height/* * cameraZoom*/) / 2));
+        ctx.drawImage(pic, cameraOffset.x - ((pic.width) / 2), cameraOffset.y - ((pic.height) / 2));
 
         requestAnimationFrame(() => { draw(pic) })
     }
@@ -108,6 +135,7 @@ function cropPhoto(pic) {
     let dragStart = { x: 0, y: 0 }
 
     function onPointerDown(e) {
+        if (!getEventLocation(e)) return;
         isDragging = true
         dragStart.x = getEventLocation(e).x / cameraZoom - cameraOffset.x
         dragStart.y = getEventLocation(e).y / cameraZoom - cameraOffset.y
@@ -116,11 +144,13 @@ function cropPhoto(pic) {
     function onPointerUp(e) {
         isDragging = false
         initialPinchDistance = null
-        lastPos = [null, null]
+        lastPosX = [null, null]
+        lastPosY = [null, null]
         lastZoom = cameraZoom
     }
 
     function onPointerMove(e) {
+        if (!getEventLocation(e)) return;
         if (isDragging) {
             cameraOffset.x = getEventLocation(e).x / cameraZoom - dragStart.x
             cameraOffset.y = getEventLocation(e).y / cameraZoom - dragStart.y
@@ -138,7 +168,8 @@ function cropPhoto(pic) {
     }
 
     let initialPinchDistance = null
-    let lastPos = [null, null]
+    let lastPosX = [null, null]
+    let lastPosY = [null, null]
     let lastZoom = cameraZoom
 
     function handlePinch(e) {
@@ -147,18 +178,23 @@ function cropPhoto(pic) {
         let touch1 = { x: e.touches[0].clientX, y: e.touches[0].clientY }
         let touch2 = { x: e.touches[1].clientX, y: e.touches[1].clientY }
 
-        console.log('Pinch last pos', lastPos)
+        if ((lastPosX[0] !== null) && (lastPosX[0] > touch1.x && lastPosX[1] > touch2.x) || (lastPosX[0] < touch1.x && lastPosX[1] < touch2.x)) {
+            let change = (((touch1.x - lastPosX[0]) + (touch2.x - lastPosX[1])) / 2) / cameraZoom
+            change = Math.min(change, 20)
+            change = Math.max(change, -20)
+            cameraOffset.x += change
+        }
+        lastPosX[0] = touch1.x
+        lastPosX[1] = touch2.x
 
-        if ((lastPos[0] !== null) && (lastPos[0] > touch1.y && lastPos[1] > touch2.y) || (lastPos[0] < touch1.y && lastPos[1] < touch2.y)) {
-            let change = (((touch1.y - lastPos[0]) + (touch2.y - lastPos[1])) / 2) / cameraZoom
+        if ((lastPosY[0] !== null) && (lastPosY[0] > touch1.y && lastPosY[1] > touch2.y) || (lastPosY[0] < touch1.y && lastPosY[1] < touch2.y)) {
+            let change = (((touch1.y - lastPosY[0]) + (touch2.y - lastPosY[1])) / 2) / cameraZoom
             change = Math.min(change, 20)
             change = Math.max(change, -20)
             cameraOffset.y += change
-            console.log('Update offset', lastPos)
         }
-        console.log('Update last pos')
-        lastPos[0] = touch1.y
-        lastPos[1] = touch2.y
+        lastPosY[0] = touch1.y
+        lastPosY[1] = touch2.y
 
         // This is distance squared, but no need for an expensive sqrt as it's only used in ratio
         let currentDistance = (touch1.x - touch2.x) ** 2 + (touch1.y - touch2.y) ** 2
@@ -168,8 +204,6 @@ function cropPhoto(pic) {
         }
         else {
             let zoomChange = currentDistance / initialPinchDistance
-            /*zoomChange = Math.min(zoomChange, 0.1)
-            zoomChange = Math.max(zoomChange, -0.1)*/
             adjustZoom(null, zoomChange)
         }
     }
@@ -177,17 +211,14 @@ function cropPhoto(pic) {
     function adjustZoom(zoomAmount, zoomFactor) {
         if (!isDragging) {
             if (zoomAmount) {
-                cameraZoom += zoomAmount
+                cameraZoom *= zoomAmount
             }
             else if (zoomFactor) {
-                console.log(zoomFactor)
                 cameraZoom = zoomFactor * lastZoom
             }
 
             //cameraZoom = Math.min(cameraZoom, MAX_ZOOM)
             cameraZoom = Math.max(cameraZoom, MIN_ZOOM)
-
-            console.log(zoomAmount)
         }
     }
 
@@ -197,7 +228,7 @@ function cropPhoto(pic) {
     canvas.addEventListener('touchend', (e) => handleTouch(e, onPointerUp))
     canvas.addEventListener('mousemove', onPointerMove)
     canvas.addEventListener('touchmove', (e) => handleTouch(e, onPointerMove))
-    canvas.addEventListener('wheel', (e) => adjustZoom(e.deltaY * SCROLL_SENSITIVITY))
+    canvas.addEventListener('wheel', (e) => adjustZoom((1 + (e.deltaY * SCROLL_SENSITIVITY))))
 
     draw(pic)
 }
@@ -391,10 +422,12 @@ async function statusScreen() {
         else if (mrStatus === 'REJECTED') { status = 'Foto fehlerhaft'; color = '#FFA99F'; }
         else if (mrStatus === 'PRINTED') { status = 'Gedruckt'; color = '#49BCFF'; }
         document.getElementById("entries-loading").remove()
-        if (i === 0 && (mrStatus === 'UPLOADED' || mrStatus === 'REJECTED')) { statusContainer.innerHTML += '<button disabled id="new-picture-button">Neues Foto hochladen</button>'; }
+        if (i === 0 && (mrStatus === 'UPLOADED' || mrStatus === 'REJECTED')) {
+            statusContainer.innerHTML += '<button disabled id="new-picture-button">Neues Foto hochladen</button>';
+        }
         statusContainer.innerHTML += `<div style="display: flex;">
         <div class="status-div">
-        <img class="status-img" src="${imageUrl}" style="margin-top: -${(4.4/frame[3])*frame[1]}em; height: ${(4.4/frame[3])*height}em; margin-left: -${(3.02/frame[2])*frame[0]}em; width: ${((3.02/frame[2])*width)/*+3.02*/}em; clip-path: polygon(${(frame[0]/width)*100}% ${(frame[1]/height)*100}%, ${((frame[2]+frame[0])/width)*100}% ${(frame[1]/height)*100}%, ${((frame[2]+frame[0])/width)*100}% ${((frame[3]+frame[1])/height)*100}%, ${((frame[0]/width)*100)}% ${((frame[3]+frame[1])/height)*100}%);">
+        <img class="status-img" src="${imageUrl}" style="margin-top: ${-(4.4 / frame[3]) * frame[1]}em; height: ${(4.4 / frame[3]) * height}em; margin-left: ${-(3.02 / frame[2]) * frame[0]}em; width: ${((3.02 / frame[2]) * width)/*+3.02*/}em; clip-path: polygon(${(frame[0] / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${((frame[3] + frame[1]) / height) * 100}%, ${((frame[0] / width) * 100)}% ${((frame[3] + frame[1]) / height) * 100}%);">
         <div>
         <span>Schülerausweis 20${user.public_id.toString().slice(3, 5)}</span>
         <br>
@@ -406,15 +439,16 @@ async function statusScreen() {
         </div>`;
         if (pictureList[i].rejection_reason) statusContainer.innerHTML += `<div style="display: grid; grid-template-columns: auto auto;"><div></div><div class="error"><img src="icons/warning.svg"><span class="rejection-error"><b>Foto wurde abgelehnt:</b><br>${pictureList[i].rejection_reason}</span></div></div>`
         statusContainer.innerHTML += '</div>'
-        try {
-            if (i === pictureList.length - 1) {
-                document.getElementById('new-picture-button').addEventListener('click', uploadPictureScreen);
+        if (i !== pictureList.length - 1) {
+            statusContainer.innerHTML += '<span id="entries-loading">Einträge werden geladen...</span>'
+        } else {
+            try {
+                document.getElementById('new-picture-button').addEventListener('click', function () { uploadPictureScreen() });
                 document.getElementById('new-picture-button').removeAttribute("disabled")
+            } catch {
+                console.debug('No new pic button')
             }
-        } catch {
-            console.debug('No new pic button')
         }
-        if (i !== pictureList.length - 1) statusContainer.innerHTML += '<span id="entries-loading">Einträge werden geladen...</span>'
     }
 }
 

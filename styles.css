@@ -127,6 +127,7 @@ summary {
 .status-img {
     height: 4.4em;
     aspect-ratio: 24/30;
+    z-index: 500;
 }
 
 .status {
@@ -134,6 +135,7 @@ summary {
     max-height: 28px;
     padding: 0.5em;
     min-width: 12em;
+    max-width: 15em;
     font: normal normal 600 18px/24px Open Sans;
     letter-spacing: 0.72px;
     color: #3E3E3E;
@@ -172,6 +174,7 @@ summary {
     right: 0;
     height: 9em;
     background-color: white;
+    z-index: 950;
 }
 
 #app-logo {
@@ -514,10 +517,13 @@ input:checked+.slider:before {
     }
 
     .status-div {
-        grid-template-columns: 1fr;
+        margin-left: 2em;
+        padding-left: 2em;
+        grid-template-columns: calc(100vw - 6em);
         grid-template-rows: 4.4em auto auto;
         height: auto;
         gap: 0;
+        width: calc(100vw - 2em);
     }
 }
 
@@ -547,6 +553,7 @@ input:checked+.slider:before {
     left: 0;
     width: 100vw;
     height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
     background-color: rgba(0, 0, 0, 0.9);
     z-index: 995;
 }
