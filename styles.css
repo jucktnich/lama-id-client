@@ -356,6 +356,12 @@ input[type="file"] {
     left: 0;
 }
 
+#close-button {
+    min-height: 2em;
+    width: 2em;
+    border-radius: 1em;
+}
+
 .lr {
     display: grid;
     grid-template-columns: 2.75em auto;
@@ -568,6 +574,7 @@ input:checked+.slider:before {
 }
 
 #pic-border {
+    box-shadow: 0 0 0 max(50vw, 50vh) rgba(0, 0, 0, 0.4);
     pointer-events: none;
     background: none !important;
     border: 2px solid var(--akzente-buttons);

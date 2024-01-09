@@ -79,8 +79,8 @@ function cropPhoto(pic) {
         //let leftPic = (((pic.width * cameraZoom) / 2) - (cameraOffset.x / cameraZoom - borderDims.x)) / cameraZoom
         //let leftPic = -(((cameraOffset.x - windowWidth / 2) / cameraZoom) + (pic.width * cameraZoom - borderDims.width) / 2) * cameraZoom
         //let topPic = (((pic.height * cameraZoom) / 2) - (cameraOffset.y - borderDims.y)) / cameraZoom
-        let leftPic = ((((windowWidth / 2) - cameraOffset.x) * cameraZoom) - (((windowWidth / 2) -borderDims.left) - ((pic.width * cameraZoom) / 2))) / cameraZoom
-        let topPic = ((((windowHeight / 2) - cameraOffset.y) * cameraZoom) - (((windowHeight / 2) -borderDims.top) - ((pic.height * cameraZoom) / 2))) / cameraZoom
+        let leftPic = ((((windowWidth / 2) - cameraOffset.x) * cameraZoom) - (((windowWidth / 2) - borderDims.left) - ((pic.width * cameraZoom) / 2))) / cameraZoom
+        let topPic = ((((windowHeight / 2) - cameraOffset.y) * cameraZoom) - (((windowHeight / 2) - borderDims.top) - ((pic.height * cameraZoom) / 2))) / cameraZoom
         let rightPic = borderDims.width / cameraZoom
         let bottomPic = borderDims.height / cameraZoom
         //let topPic = (((cameraOffset.y - windowHeight / 2) / cameraZoom) + (pic.height * cameraZoom - borderDims.height) / 2) * cameraZoom
@@ -566,7 +566,11 @@ function showDoc(type) {
         <p>Zur Bereitstellung und Pflege unserer E-Mail-Postfächer setzen wir externe Dienste ein. Diese Dienste können Zugriff auf personenbezogene Daten haben, die im Rahmen der Kontaktaufnahme mit uns verarbeitet werden. Weitere Informationen zu den eingesetzten Diensten, zum Umfang der Datenverarbeitung und zu den Technologien und Verfahren beim Einsatz der jeweiligen Dienste finden Sie nachfolgend in den weiterführenden Informationen über die von uns eingesetzten Dienste und unter den dort bereitgestellten Links:</p>
         <p> <u>Microsoft Exchange</u><br /> Anbieter: Microsoft Ireland Operations Limited, Irland. Die Microsoft Ireland Operations Limited ist eine Tochtergesellschaft der Microsoft Corporation, Vereinigte Staaten von Amerika.<br /> Website: <a href="https://www.microsoft.com/de-de/microsoft-365/exchange/email" target="new">https://www.microsoft.com/de-de/microsoft-365/exchange/email</a><br /> Weitere Informationen & Datenschutz: <a href="https://privacy.microsoft.com/de-de/" target="new">https://privacy.microsoft.com/de-de/</a> und <a href="https://www.microsoft.com/de-de/trust-center/privacy" target="new">https://www.microsoft.com/de-de/trust-center/privacy</a> <br />Garantie: EU-Standardvertragsklauseln. Eine Kopie der EU-Standardvertragsklauseln können Sie bei uns anfordern. Der Anbieter hat sich dem EU-US Data Privacy Framework (<a href="https://www.dataprivacyframework.gov" target="new">https://www.dataprivacyframework.gov</a>) angeschlossen, das auf Basis eines Beschlusses der Europäischen Kommission die Einhaltung eines angemessenen Datenschutzniveaus gewährleistet. </p>`,
     };
-    document.body.innerHTML += `<div class="doc">${docs[type]}</div>`;
+    document.getElementById('doc').innerHTML = `<button id="close-button" style="position: absolute; top: 1.5em; right: 1.5em;" aria-label="Schließen">×</button>${docs[type]}`;
+    document.getElementById('doc').style.display = 'block';
+    document.getElementById('close-button').addEventListener("click", () => {
+        document.getElementById('doc').style.display = 'none';
+    })
 }
 
 window.scrollTo(0, 0);
@@ -574,28 +578,46 @@ document.getElementById("login").addEventListener("click", logUserIn)
 document.getElementById("imprint").addEventListener("click", () => { showDoc("imprint") })
 document.getElementById("gdpr").addEventListener("click", () => { showDoc("gdpr") })
 document.getElementById("app-logo").addEventListener("click", () => { window.location.reload(); })
-
-if (true) {
-    var logBind = console.log.bind(console);
-    var warnBind = console.warn.bind(console);
-    var errorBind = console.error.bind(console);
-
-    console.log = async (text, json) => {
-        await supabase
-            .from('logs')
-            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'LOG', log: text + ' ' + JSON.stringify(json) })
-        logBind(text, json);
+document.addEventListener("keypress", (event) => {
+    if (event.key === 'Enter' && !userID && document.getElementById('password').value) {
+        logUserIn()
     }
-    console.warn = async (text, json) => {
-        await supabase
-            .from('logs')
-            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'WARN', log: text + ' ' + JSON.stringify(json) })
-        warnBind(text, json);
-    }
+});
+
+const logLevel = new URLSearchParams(window.location.search).get('logLevel');
+function createLogBindings() {
+    if (!logLevel) return
+    let errorBind = console.error.bind(console);
+    let warnBind = console.warn.bind(console);
+    let logBind = console.log.bind(console);
+    let debugBind = console.warn.bind(console);
+
     console.error = async (text, json) => {
         await supabase
             .from('logs')
             .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'ERROR', log: text + ' ' + JSON.stringify(json) })
         errorBind(text, json);
     }
+    if (logLevel === 'error') return
+    console.warn = async (text, json) => {
+        await supabase
+            .from('logs')
+            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'WARN', log: text + ' ' + JSON.stringify(json) })
+        warnBind(text, json);
+    }
+    if (logLevel === 'warn') return
+    console.log = async (text, json) => {
+        await supabase
+            .from('logs')
+            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'LOG', log: text + ' ' + JSON.stringify(json) })
+        logBind(text, json);
+    }
+    if (logLevel === 'log') return
+    console.debug = async (text, json) => {
+        await supabase
+            .from('logs')
+            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'DEBUG', log: text + ' ' + JSON.stringify(json) })
+        debugBind(text, json);
+    }
 }
+createLogBindings()
