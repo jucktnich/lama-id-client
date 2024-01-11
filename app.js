@@ -401,6 +401,7 @@ async function statusScreen() {
         else mrStatus = 'WITHDRAWN'
         if (pictureList[i].status !== undefined) {
             mrStatus = pictureList[i].status
+            if (mrStatus === "UPLOADED" && i !== 0) mrStatus = 'WITHDRAWN';
         }
         const { data: file, error: fileError } = await supabase
             .storage
