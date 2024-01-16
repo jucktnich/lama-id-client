@@ -2,39 +2,47 @@
 <html lang="de">
 
 <head>
-    <title>Lama ID Admin</title>
+    <title>Lama ID Foto-Upload</title>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
         description="Lama ID ist eine Software mithilfe welcher Schülerausweise mit geringem Arbeitsaufwand hergestellt werden können.">
     <link rel="stylesheet" type="text/css" href="styles.css" />
+    <link rel="icon" type="image/svg" href="icons/favicon.ico">
 </head>
 
 <body>
     <noscript>Diese Seite benötigt aktiviertes JavaScript.</noscript>
     <div id="login-div">
-        <input type="password" name="service-key" id="service-key" placeholder="Service Key" required />
-        <button id="login">Mit Service-Key anmelden</button>
-        <input type="email" name="email" id="email" placeholder="E-Mail" required />
-        <input type="password" name="password" id="password" placeholder="Passwort" required />
-        <button id="login-email">Anmelden</button>
-        <br>
+        <div class="center-content" id="big-logo-bg"><img id="big-logo" src="icons/logo-white.svg"></div>
+        <div id="login-side">
+            <h1>Identität bestätigen</h1>
+            <input type="text" pattern="^[0-9]" inputmode="numeric" name="id" id="id-input" placeholder="ID" required />
+            <input type="password" name="password" id="password" placeholder="Code" required />
+            <button id="login">Anmelden</button>
+            <div style="display: none;" id="login-error" class="error"><img src="icons/warning.svg">
+                <div>Eingaben fehlerhaft!<br>Bitte ID und Code überprüfen!</div>
+            </div>
+        </div>
     </div>
-    <div id="app">
-        <button id="import-school">Schule importieren</button>
-        <div id="import-school-fields"></div>
-        <br>
-        <button id="start-classification">Bilder überprüfen</button>
-        <br>
-        <br>
-        <button id="create-pdfs">Schülerausweise erstellen</button>
-        <div id="create-pdfs-fields"></div>
-        <canvas id="canvas"></canvas>
+    <div style="display: none;" id="app-container">
+        <div id="app-logo-container">
+            <img id="app-logo" src="icons/logo-black.svg">
+            <div id="username"><span id="username-text">Eingeloggt als <span id="username-span"></span></span></div>
+        </div>
+        <div id="app"></div>
     </div>
-    <svg id="barcode"></svg>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/barcodes/JsBarcode.code128.min.js"></script>
-    <script src="https://unpkg.com/@pdf-lib/fontkit/dist/fontkit.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+    <footer id="footer">
+        <span id="imprint">Impressum</span>
+        <span id="gdpr">Datenschutz</span>
+    </footer>
+    <div id="doc" class="doc" style="display: none;"></div>
     <script type="module" src="./app.js"></script>
+    <script type="text/javascript">
+        (function (d, src, c) { var t = d.scripts[d.scripts.length - 1], s = d.createElement('script'); s.id = 'la_x2s6df8d'; s.defer = true; s.src = src; s.onload = s.onreadystatechange = function () { var rs = this.readyState; if (rs && (rs != 'complete') && (rs != 'loaded')) { return; } c(this); }; t.parentElement.insertBefore(s, t.nextSibling); })(document,
+            'https://lamarketing.ladesk.com/scripts/track.js',
+            function (e) { LiveAgent.createButton('1urq61qi', e); });
+    </script>
 </body>
 
 </html>
