@@ -1,42 +1,37 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 const supabaseUrl = 'https://supabase.lama-id.de'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzA0NDA5MjAwLAogICJleHAiOiAxODYyMjYyMDAwCn0.r_Iv-w4S5DncSzdO5CSIr0nIdOxG6kQFhzMkxvp6a4A'
-const supabase = createClient(supabaseUrl, supabaseKey)
+let supabase;
 
-const appEle = document.getElementById("app");
-const sessionID = uuidv4();
+const idPdfBytes = await fetch('id_schueler.pdf').then((res) => res.arrayBuffer());
+const bahnschriftBytes = await fetch('bahnschrift-SemiLight.ttf').then((res) => res.arrayBuffer());
+const standardWidth = 86.6; const standardHeight = 55;
+let width, height, bahnschrift;
 
-let currentDisableStatus = [false, false, false];
-let user = null;
-let userID = null;
+const appEle = document.getElementById("app")
 
-function showError(error = 'Fehler beim Laden der Daten. Wenn dieser Fehler häufiger auftritt, kontaktiere bitte den Support.') {
-    appEle.innerHTML = `<span class="error">${error}</span>`
+function blobToImage(blob) {
+    return new Promise(resolve => {
+        const url = URL.createObjectURL(blob)
+        let img = new Image()
+        img.onload = () => {
+            URL.revokeObjectURL(url)
+            resolve(img)
+        }
+        img.src = url
+    })
 }
 
-function uuidv4() {
-    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
-        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-    );
-}
-
-function uploadButtonUpdate() {
-    if (currentDisableStatus[0] && currentDisableStatus[1] && currentDisableStatus[2]) document.getElementById('upload-button').removeAttribute('disabled');
-    else document.getElementById('upload-button').disabled = 'true';
-}
-
-function picFinished(pic, frame, size) {
+async function picFinished(pic, frame, size, i, pictureList) {
     console.log("Cropping of the picture finished");
-
-    document.getElementById("consent-1").addEventListener('change', (event) => { currentDisableStatus[1] = event.currentTarget.checked; uploadButtonUpdate(); });
-    document.getElementById("consent-2").addEventListener('change', (event) => { currentDisableStatus[2] = event.currentTarget.checked; uploadButtonUpdate(); });
-    document.getElementById("upload-button").addEventListener('click', () => { uploadPicture(pic, frame, size) })
-    currentDisableStatus[0] = true;
-    uploadButtonUpdate();
-    document.getElementById("photo-upload-img").src = "icons/check.svg"
-    document.getElementById("photo-upload-text").innerText = "Foto erfolgreich hinzugefügt"
-    document.getElementById("photo-upload-text").style.color = "#49BCFF"
-    document.getElementById("photo-upload").classList.add("uploadSuccessful")
+    const { data, error } = await supabase
+        .from('picture_list')
+        .update({ frame: frame, size: size, original_state: pictureList[i] })
+        .eq('picture_id', pictureList[i].picture_id)
+        .select()
+    pictureList[i].frame = frame;
+    pictureList[i].size = size;
+    showSite(i, pictureList)
 }
 
 function closeCanvas() {
@@ -48,17 +43,21 @@ function closeCanvas() {
     document.body.style.touchAction = 'auto'
 }
 
-function cropPhoto(pic) {
-    document.querySelector('[id^="b_1urq61qi_"]').children[0].style.zIndex = '990';
+function cropPhoto(pic, i, pictureList) {
+    console.log(pic)
     document.body.style.overflowY = 'hidden'
     document.body.style.position = 'fixed'
     document.body.style.touchAction = 'none'
 
+    let timeout;
     window.addEventListener("resize", () => {
-        if (document.getElementById("crop-canvas")) {
-            closeCanvas();
-            cropPhoto(pic);
-        }
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            if (document.getElementById("crop-canvas")) {
+                closeCanvas();
+                cropPhoto(pic, i, pictureList);
+            }
+        }, 250);
     })
 
     const windowWidth = window.innerWidth;
@@ -70,25 +69,13 @@ function cropPhoto(pic) {
     appEle.innerHTML += '<canvas id="crop-canvas"></canvas><div class="center-content" id="pic-border-container"><div id="pic-border"></div><button id="pic-border-btn">OK</button></div>'
     const borderDims = document.getElementById("pic-border").getBoundingClientRect();
     document.getElementById("pic-border-btn").addEventListener('click', () => {
-        /*let left = (windowWidth - boxDims.width) / 2;
-        let right = left + boxDims.width;
-        let top = (windowHeight - boxDims.height) / 2;
-        let bottom = top + boxDims.height;*/
-        /*let leftPic = (pic.width / 2) - ((boxDims.left - (cameraOffset.x*cameraZoom))/* / cameraZoom*//*)
-        let topPic = (pic.height / 2) - ((boxDims.top - (cameraOffset.y*cameraZoom))/* / cameraZoom*///)
-        //let leftPic = (((pic.width * cameraZoom) / 2) - (cameraOffset.x / cameraZoom - borderDims.x)) / cameraZoom
-        //let leftPic = -(((cameraOffset.x - windowWidth / 2) / cameraZoom) + (pic.width * cameraZoom - borderDims.width) / 2) * cameraZoom
-        //let topPic = (((pic.height * cameraZoom) / 2) - (cameraOffset.y - borderDims.y)) / cameraZoom
         let leftPic = ((((windowWidth / 2) - cameraOffset.x) * cameraZoom) - (((windowWidth / 2) - borderDims.left) - ((pic.width * cameraZoom) / 2))) / cameraZoom
         let topPic = ((((windowHeight / 2) - cameraOffset.y) * cameraZoom) - (((windowHeight / 2) - borderDims.top) - ((pic.height * cameraZoom) / 2))) / cameraZoom
         let rightPic = borderDims.width / cameraZoom
         let bottomPic = borderDims.height / cameraZoom
-        //let topPic = (((cameraOffset.y - windowHeight / 2) / cameraZoom) + (pic.height * cameraZoom - borderDims.height) / 2) * cameraZoom
-        //let rightPic = (pic.width - (((((pic.width * cameraZoom) / 2) + cameraOffset.x) - (borderDims.right)) / cameraZoom)) - leftPic
-        //let bottomPic = (pic.height - (((((pic.height * cameraZoom) / 2) + cameraOffset.y) - (borderDims.bottom)) / cameraZoom)) - topPic
         closeCanvas()
         console.log([leftPic, topPic, rightPic, bottomPic], [pic.width, pic.height], cameraZoom, borderDims, cameraOffset, pic)
-        picFinished(pic, [leftPic, topPic, rightPic, bottomPic], [pic.width, pic.height])
+        picFinished(pic, [leftPic, topPic, rightPic, bottomPic], [pic.width, pic.height], i, pictureList)
     })
 
     let canvas = document.getElementById("crop-canvas")
@@ -100,7 +87,7 @@ function cropPhoto(pic) {
     let MIN_ZOOM = 0
     let SCROLL_SENSITIVITY = 0.0005
 
-    if ((pic.width / pic.height) < 24 / 35) {
+    if ((pic.width / pic.height) < 24 / 30) {
         cameraZoom = document.getElementById("pic-border").getBoundingClientRect().width / pic.width;
     } else {
         cameraZoom = document.getElementById("pic-border").getBoundingClientRect().height / pic.height;
@@ -233,392 +220,448 @@ function cropPhoto(pic) {
     draw(pic)
 }
 
-function validate() {
-    console.log('Validating uploaded file...')
-    let URL = window.URL || window.webkitURL;
-    let input = document.getElementById("file-upload");
-    let file = input.files[0];
+function uuidv4() {
+    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
+}
 
-    if (file) {
-        var image = new Image();
-
-        image.onload = function () {
-            if (this.width) {
-                console.log('First uploaded file is an image');
-                cropPhoto(this)
-            } else {
-                console.warn('First uploaded file is NOT an image');
-                currentDisableStatus[0] = false;
-                uploadButtonUpdate();
-                input.value = null;
-            }
+async function svgToPng(svg) {
+    return new Promise((resolve) => {
+        const url = getSvgUrl(svg);
+        svgUrlToPng(url).then((imgData) => {
+            resolve(imgData);
+            URL.revokeObjectURL(url);
+        });
+    })
+}
+function getSvgUrl(svg) {
+    return URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+}
+function svgUrlToPng(svgUrl) {
+    return new Promise((resolve) => {
+        const svgImage = document.createElement('img');
+        document.body.appendChild(svgImage);
+        svgImage.onload = function () {
+            const canvas = document.createElement('canvas');
+            canvas.width = svgImage.clientWidth;
+            canvas.height = svgImage.clientHeight;
+            const canvasCtx = canvas.getContext('2d');
+            canvasCtx.drawImage(svgImage, 0, 0);
+            const imgData = canvas.toDataURL('image/png');
+            svgImage.remove();
+            resolve(imgData);
         };
+        svgImage.src = svgUrl;
+    })
+}
 
-        image.src = URL.createObjectURL(file);
+function drawText(page, text, x, y) {
+    page.drawText(text, {
+        x: x * (width / standardWidth),
+        y: height - (y * (height / standardHeight)),
+        size: 9.3,
+        font: bahnschrift,
+        color: PDFLib.rgb(0, 0, 0),
+    })
+}
+
+async function createID(userID, preprint) {
+    let { data: user, error: userError } = await supabase
+        .from('users')
+        .select("*")
+        .eq('id', userID)
+    if (userError) {
+        console.error(userError)
+        throw new Error(`Supabase error getting user data: ${userID}`);
     }
-};
+    if (user.length === 0) {
+        console.warn('User not found')
+        throw new Error(`User not found: ${userID}`);
+    }
+    user = user[0]
 
-function uploadSuccessfulScreen() {
-    window.scrollTo(0, 0);
-    appEle.innerHTML = `<div class="upload-successfull">
-    <div><img style="width: 5em;" src="icons/check.svg"></div>
-    <p class="upload-successfull-text">Vielen Dank für Deinen Upload!</p>
-    <p class="upload-successfull-text">Sobald das Foto geprüft wurde, wird Dein Ausweis gedruckt und über die Schule ausgeliefert.</p>
-    <div><button id="go-to-status" style="padding: 1em">Foto ansehen und Status prüfen</button></div>
-    </div>`
-    document.getElementById("go-to-status").addEventListener('click', statusScreen)
+    const { data: userClass, error: classError } = await supabase
+        .from('classes')
+        .select('*')
+        .eq("id", user.class_id)
+    if (classError) {
+        console.error(classError)
+        throw new Error(`Supabase error getting class data: ${userID}`);
+    }
+    if (userClass.length === 0) {
+        console.warn('Class not found')
+        throw new Error(`Class not found: ${userID}`);
+    }
+    user.class_name = userClass[0].name
+
+    let { data: picture, error: picError } = await supabase
+        .from('verified_pictures')
+        .select('*')
+        .eq("user_id", userID)
+        .eq("status", "ACCEPTED")
+    if (picError) {
+        console.error(picError)
+        throw new Error(`Supabase error getting picture data: ${userID}`);
+    }
+    if (picture.length === 0) {
+        console.log('No accepted picture not found')
+        throw new Error(`No accepted picture not found: ${userID}`);
+    }
+    picture = picture[0]
+
+    let { data: pictureList, error: picListError } = await supabase
+        .from('picture_list')
+        .select('*')
+        .eq("picture_id", picture.picture_id)
+    if (picListError) {
+        console.error(picListError)
+        throw new Error(`Supabase error getting picture data: ${userID}`);
+    }
+    if (pictureList.length === 0) {
+        console.log('No accepted picture not found')
+        throw new Error(`No accepted picture not found: ${userID}`);
+    }
+    pictureList = pictureList[0]
+
+    const { data: file, error: fileError } = await supabase.storage
+        .from('pictures')
+        .download(picture.user_id + '/' + picture.picture_id + '.jpg');
+    if (fileError) {
+        console.error(picError)
+        throw new Error(`Supabase error downloading picture data: ${userID}`);
+    }
+
+    //appEle.innerHTML += `
+    //<img src="${imageUrl}" style="position: absolute; top: ${-(72.9 / frame[3]) * frame[1]}vw; left: ${-(50 / frame[2]) * frame[0]}vw; height: ${(72.9 / frame[3]) * height}vw; width: ${((50 / frame[2]) * width)}vw; clip-path: polygon(${(frame[0] / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${((frame[3] + frame[1]) / height) * 100}%, ${((frame[0] / width) * 100)}% ${((frame[3] + frame[1]) / height) * 100}%);">
+    //<div style="position: absolute; top: 0; left: 0; height: calc(72.9vw - 2px); width: calc(50vw - 2px);");></div>`
+
+    const originalImage = await blobToImage(await file);
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    //wait for the image to finish loading
+    //originalImage.addEventListener('load', async () => {
+
+        //set the canvas size to the new width and height
+        canvas.width = pictureList.frame[2];
+        canvas.height = pictureList.frame[3];
+
+        //draw the image
+        ctx.drawImage(originalImage, pictureList.frame[0], pictureList.frame[1], pictureList.frame[2], pictureList.frame[3], 0, 0, pictureList.frame[2], pictureList.frame[3]);
+        //find the input elements in the html
+        //create a temporary link for the download item
+        /*let tempLink = document.createElement('a');
+
+        //generate a new filename
+        let fileName = `image-cropped.jpg`;
+
+        //configure the link to download the resized image
+        tempLink.download = fileName;
+        tempLink.href = document.getElementById('canvas').toDataURL("image/jpeg", 1);
+        tempLink.click();*/
+
+
+        const idPdf = await PDFLib.PDFDocument.load(idPdfBytes);
+        idPdf.registerFontkit(fontkit)
+        bahnschrift = await idPdf.embedFont(bahnschriftBytes)
+        let pages = idPdf.getPages()
+        width = pages[0].getSize().width
+        height = pages[0].getSize().height
+
+        const image = await idPdf.embedJpg(await document.getElementById('canvas').toDataURL("image/jpeg", 1))
+        pages[0].drawImage(image, {
+            x: 4.035 * (width / standardWidth),
+            y: height - (44.793 * (height / standardHeight)),
+            width: 24 * (width / standardWidth),
+            height: 30 * (height / standardHeight),
+        })
+
+        drawText(pages[0], new Date(user.valid_date).toLocaleDateString('de-DE', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).substring(0, 19), 45.733, 17.771)
+        drawText(pages[0], user.last_name.substring(0, 19), 40.822, 25.706)
+        drawText(pages[0], user.first_name.substring(0, 19), 45.189, 33.628)
+        drawText(pages[0], new Date(user.birthdate).toLocaleDateString('de-DE', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).substring(0, 19), 52.596, 41.824)
+
+        JsBarcode("#barcode", user.stud_id, {
+            format: "CODE128",
+            lineColor: "#000",
+            width: 10,
+            height: 100,
+            displayValue: false
+        });
+        const barcodePng = await svgToPng(document.getElementById("barcode").outerHTML);
+        const barcode = await idPdf.embedPng(barcodePng)
+        pages[1].drawImage(barcode, {
+            x: (width - 50 * (width / standardWidth)) / 2,
+            y: height - (48 * (height / standardHeight)),
+            width: 50 * (width / standardWidth),
+            height: 6 * (height / standardHeight),
+        })
+
+        const getStringWidth = (string, fontSize) =>
+            string
+                .split('')
+                .map((c) => c.charCodeAt(0))
+                .map((c) => bahnschrift.embedder.font.glyphForCodePoint(c).advanceWidth * (fontSize / 1000))
+                .reduce((total, width) => total + width, 0);
+        pages[1].drawText(user.stud_id, {
+            x: (width - 0.5 * getStringWidth(user.stud_id, 7)) / 2,
+            y: height - (51 * (height / standardHeight)),
+            size: 7,
+            font: bahnschrift,
+            color: PDFLib.rgb(0, 0, 0),
+        })
+
+
+        const pdfDataUri = await idPdf.saveAsBase64({ dataUri: true });
+        window.location = pdfDataUri;
+
+        /*const link = document.createElement("a");
+        link.href = pdfDataUri;
+        link.download = user.class_name + '_' + user.last_name + '-' + user.first_name + '.pdf';
+        link.click();*/
+
+    //});
 }
 
-async function uploadPicture(pic, frame, size) {
-    console.log("Uploading picture")
-    document.getElementById("upload-button").disabled = "true";
-    document.getElementById("upload-button").innerText = "Lädt...";
-    let c = document.createElement("canvas"),
-        ctx = c.getContext("2d");
-    c.width = pic.width;
-    c.height = pic.height;
-    ctx.drawImage(pic, 0, 0);
-    c.toBlob(async (blob) => {
-        let converted = new File([blob], "converted.jpg", { type: "image/jpeg" });
-        /*if (converted.size < 500) {
-            converted = new FileReader().readAsText(document.getElementById("file-upload").files[0])
-        }*/
-        const id = uuidv4();
-        const { error: uploadError } = await supabase
-            .storage
-            .from('pictures')
-            .upload(userID + '/' + id + '.jpg', converted, {
-                cacheControl: '3600',
-                upsert: false
-            })
-        if (uploadError) {
-            console.warn(uploadError);
-            showError('Fehler beim Upload des Fotos. Wenn dieser Fehler häufiger auftritt, kontaktiere bitte den Support.');
-            return;
-        }
-        const { error: pictureListError } = await supabase
-            .from('picture_list')
-            .insert({ picture_id: id, user_id: userID, frame: frame, size: size })
-        if (pictureListError) {
-            console.warn(pictureListError);
-            showError();
-            return;
-        }
-        uploadSuccessfulScreen()
-    }, "image/jpeg", 1);
+async function createPDFs() {
+    createID('dce5b99f-8a8d-4660-ba89-e6174aff2bbc', null)
+    /*console.log("Create PDFs");
+    const { data: schools, error: schoolsError } = await supabase
+        .from('schools')
+        .select('* classes: ')
+    console.log(schools)
+    document.getElementById("create-pdfs-fields").innerHTML = `
+    <ul>`;*/
 }
 
-function uploadPictureScreen() {
-    window.scrollTo(0, 0);
-    console.log('Upload picture screen')
-    appEle.innerHTML = `<div style="max-width: calc(100vw - 3em);"><h1>Foto-Upload</h1>
-    <div><div class="grid-w-line">
-    <label id="photo-upload" class="photo-upload">
-    <div class="center-content"><img style="width: 4.5em" id="photo-upload-img" src="icons/add-a-photo.svg"></div>
-    <div class="center-content"><span id="photo-upload-text">Foto hier hinziehen oder<br>klicken zum auswählen</span></div>
-    <!--<img src="icons/circle-button.png" id="explainer-button">-->
-    <input type="file" id="file-upload"></label>
-    <div id="explainer"><h2>Bitte achte auf folgende Vorgaben an Dein Foto</h2>
-    <ul style="padding-left: 1.25em;"><li>ausreichende Fotogröße und -Auflösung</li>
-    <li>das Gesicht sollte gut erkennbar sein, kein Schatten im Gesicht</li>
-    <li>keine Kunstfilter wie Schwarz-Weiß- oder Farbeffekte</li>
-    <li>keine "Snapchat-Filter" wie Hasenohren o.ä.</li>
-    <li>keine Accessoires wie Sonnenbrillen, Mützen, etc.</li>
-    <li>keine Fotos mit mehr als einer Person</li>
-    </div></div>
-    <details>
-    <summary>Bitte achte auf folgende Vorgaben an Dein Foto</summary>
-    <ul style="padding-left: 1.25em;"><li>ausreichende Fotogröße und -Auflösung</li>
-    <li>das Gesicht sollte gut erkennbar sein, kein Schatten im Gesicht</li>
-    <li>keine Kunstfilter wie Schwarz-Weiß- oder Farbeffekte</li>
-    <li>keine "Snapchat-Filter" wie Hasenohren o.ä.</li>
-    <li>keine Accessoires wie Sonnenbrillen, Mützen, etc.</li>
-    <li>keine Fotos mit mehr als einer Person</li>
-    </details>
+async function result(userID, pictureID, status, rejectionReason) {
+    const { data, error } = await supabase
+        .from('verified_pictures')
+        .upsert({ picture_id: pictureID, user_id: userID, status: status, rejection_reason: rejectionReason })
+        .select()
+    if (error) console.warn(error)
+}
+
+async function showSite(i, pictureList) {
+    if (i >= pictureList.length) { app.innerHTML = "Fertig"; return; }
+    if (!pictureList[i]) { showSite(i + 1, pictureList); return; }
+
+    const { data: file, error: fileError } = await supabase
+        .storage
+        .from('pictures')
+        .download(`${pictureList[i].user_id}/${pictureList[i].picture_id}.jpg`)
+    if (fileError) {
+        console.warn(fileError);
+        showSite(i + 1, pictureList);
+    }
+
+    let imageUrl = URL.createObjectURL(file);
+    let frame = pictureList[i].frame
+    let width = pictureList[i].size[0]
+    let height = pictureList[i].size[1]
+
+    app.innerHTML = `
+    <img src="${imageUrl}" style="position: absolute; top: ${-(72.9 / frame[3]) * frame[1]}vw; left: ${-(50 / frame[2]) * frame[0]}vw; height: ${(72.9 / frame[3]) * height}vw; width: ${((50 / frame[2]) * width)}vw; clip-path: polygon(${(frame[0] / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${((frame[3] + frame[1]) / height) * 100}%, ${((frame[0] / width) * 100)}% ${((frame[3] + frame[1]) / height) * 100}%);">
+    <div style="border: solid 2px black; position: absolute; top: 0; left: 0; height: calc(72.9vw - 2px); width: calc(50vw - 2px);");></div>
+    <div style="position: absolute; left: 1em; top: 75vw;">
+    <button id="resize">Neu zuschneiden</button>
+    <p>UUID: ${pictureList[i].user_id}</p>
+    </div>
+    
+    <div style="position: absolute; top: 1em; right: 1em;">
+    <button id="accept" style="color: green">Gehnehmigt</button>
     <br>
-    <div class="lr"><label class="switch"><input type="checkbox" id="consent-1"><span class="slider round"></span></label><span>Ich erteile meiner Schule die Vollmacht, im Falle von Problemen meine Kontakt-Daten an Lama-ID auszuhändigen.</span></div><br>
-    <div class="lr"><label class="switch"><input type="checkbox" id="consent-2"><span class="slider round"></span></label><span>Ich habe die Datenschutz-Bedingungen zum Foto-Upload gelesen und bin einverstanden.</span></div></div>
-    <div class="center-content"><button id="upload-button" disabled>Foto hochladen</button></div></div>`
-    const photoUpload = document.getElementById("photo-upload")
-    photoUpload.addEventListener('dragover', (ev) => {
-        ev.preventDefault();
-        ev.dataTransfer.dropEffect = "move";
-    })
-    photoUpload.addEventListener('drop', (ev) => {
-        ev.preventDefault();
-        let container = new DataTransfer();
-        [...ev.dataTransfer.files].map(file => container.items.add(file));
-        document.getElementById("file-upload").files = container.files;
-        validate();
-    })
-    document.getElementById("consent-1").addEventListener('change', (event) => { currentDisableStatus[1] = event.currentTarget.checked; uploadButtonUpdate(); })
-    document.getElementById("consent-2").addEventListener('change', (event) => { currentDisableStatus[2] = event.currentTarget.checked; uploadButtonUpdate(); })
-    document.getElementById("file-upload").addEventListener('change', validate)
-    document.getElementById("upload-button").addEventListener('click', uploadPicture)
+    <br>
+    <br>
+    <button id="clarification" style="color: yellow">Klärung</button>
+    <br>
+    <br>
+    <br>
+    <button id="reject-group" style="color: red">Gruppenfoto</button>
+    <br>
+    <br>
+    <button id="reject-filter" style="color: red">Foto-Filter</button>
+    <br>
+    <br>
+    <button id="reject-accessoires" style="color: red">Accessoires</button>
+    <br>
+    <br>
+    <button id="reject-blurred" style="color: red">Unscharf</button>
+    <br>
+    <br>
+    <button id="reject-shaky" style="color: red">Verwackelt</button>
+    <br>
+    <br>
+    <br>
+    <button id="skip" style="color: black">Überspringen</button>
+    </div>`
+    document.getElementById("resize").addEventListener("click", async () => { cropPhoto(await blobToImage(await file), i, pictureList) })
+    document.getElementById("accept").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "ACCEPTED", null); showSite(i + 1, pictureList); })
+    document.getElementById("clarification").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "CLARIFICATION", null); showSite(i + 1, pictureList); })
+    document.getElementById("reject-group").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "REJECTED", "Keine Gruppenfotos"); showSite(i + 1, pictureList); })
+    document.getElementById("reject-filter").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "REJECTED", "Keine Filter"); showSite(i + 1, pictureList); })
+    document.getElementById("reject-accessoires").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "REJECTED", "Keine Accessoires"); showSite(i + 1, pictureList); })
+    document.getElementById("reject-blurred").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "REJECTED", "Unscharf"); showSite(i + 1, pictureList); })
+    document.getElementById("reject-shaky").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "REJECTED", "Verwackelt"); showSite(i + 1, pictureList); })
+    document.getElementById("skip").addEventListener("click", () => { showSite(i + 1, pictureList); })
 }
 
-async function statusScreen() {
-    window.scrollTo(0, 0);
-    appEle.innerHTML = '<div id="status-container"><span id="entries-loading">Einträge werden geladen...</span></div>';
-    const statusContainer = document.getElementById("status-container");
-
+async function classify() {
     let { data: pictureList, error: pictureListError } = await supabase
         .from('picture_list')
         .select()
-        .eq('user_id', userID)
+        .order('user_id', { ascending: false })
         .order('created_at', { ascending: false });
     if (pictureListError) {
         console.warn(pictureListError);
-        showError();
         return;
     }
+
+    console.log(pictureList)
 
     const { data: verified, error: verifiedError } = await supabase
         .from('verified_pictures')
         .select()
-        .eq('user_id', userID)
     if (verifiedError) {
         console.warn(verifiedError);
         showError();
         return;
     }
 
+    let lastID;
+
     outer:
-    for (let i = 0; i < verified.length; i++) {
-        for (let j = 0; j < pictureList.length; j++) {
+    for (let j = 0; j < pictureList.length; j++) {
+        if (!pictureList[j]) continue;
+        if (pictureList[j].user_id === lastID) {
+            delete pictureList[j];
+            continue outer;
+        }
+        lastID = pictureList[j].user_id
+        for (let i = 0; i < verified.length; i++) {
             if (pictureList[j].picture_id === verified[i].picture_id) {
-                pictureList[j].status = verified[i].status;
-                pictureList[j].rejection_reason = verified[i].rejection_reason;
+                if (verified[i].status !== 'UPLOADED') {
+                    delete pictureList[j];
+                }
                 continue outer;
             }
         };
     }
 
-    console.log('Showing the status with following pictures', pictureList);
-    for (let i = 0; i < pictureList.length; i++) {
-        let mrStatus;
-        if (i === 0) mrStatus = 'UPLOADED'
-        else mrStatus = 'WITHDRAWN'
-        if (pictureList[i].status !== undefined) {
-            mrStatus = pictureList[i].status
-            if (mrStatus === "UPLOADED" && i !== 0) mrStatus = 'WITHDRAWN';
-        }
-        const { data: file, error: fileError } = await supabase
-            .storage
-            .from('pictures')
-            .download(`${userID}/${pictureList[i].picture_id}.jpg`)
-        if (fileError) {
-            console.warn(fileError);
-            showError();
-            return;
-        }
-        let imageUrl = URL.createObjectURL(file);
-        let frame = pictureList[i].frame
-        let width = pictureList[i].size[0]
-        let height = pictureList[i].size[1]
-        let status, color;
-        if (mrStatus === 'UPLOADED' || mrStatus === 'CLARIFICATION') { status = 'Foto hochgeladen'; color = '#95E567'; }
-        else if (mrStatus === 'WITHDRAWN') { status = 'Foto gelöscht'; color = '#bbb'; }
-        else if (mrStatus === 'ACCEPTED') { status = 'Druckvorbereitung'; color = '#FFEB8A'; }
-        else if (mrStatus === 'REJECTED') { status = 'Foto fehlerhaft'; color = '#FFA99F'; }
-        else if (mrStatus === 'PRINTED') { status = 'Gedruckt'; color = '#49BCFF'; }
-        document.getElementById("entries-loading").remove()
-        if (i === 0 && (mrStatus === 'UPLOADED' || mrStatus === 'REJECTED')) {
-            statusContainer.innerHTML += '<button disabled id="new-picture-button">Neues Foto hochladen</button>';
-        }
-        statusContainer.innerHTML += `<div style="display: flex;">
-        <div class="status-div">
-        <img class="status-img" src="${imageUrl}" style="margin-top: ${-(4.4 / frame[3]) * frame[1]}em; height: ${(4.4 / frame[3]) * height}em; margin-left: ${-(3.02 / frame[2]) * frame[0]}em; width: ${((3.02 / frame[2]) * width)/*+3.02*/}em; clip-path: polygon(${(frame[0] / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${((frame[3] + frame[1]) / height) * 100}%, ${((frame[0] / width) * 100)}% ${((frame[3] + frame[1]) / height) * 100}%);">
-        <div>
-        <span>Schülerausweis 20${user.public_id.toString().slice(3, 5)}</span>
-        <br>
-        <span>${user.class.name}, ${user.school.name}</span>
-        <br>
-        <span><b>Foto vom:</b> ${new Date(pictureList[i].created_at).toLocaleString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
-        <p class="status" style="background: ${color};">${status}</p>
-        </div>`;
-        if (pictureList[i].rejection_reason) statusContainer.innerHTML += `<div style="display: grid; grid-template-columns: auto auto;"><div></div><div class="error"><img src="icons/warning.svg"><span class="rejection-error"><b>Foto wurde abgelehnt:</b><br>${pictureList[i].rejection_reason}</span></div></div>`
-        statusContainer.innerHTML += '</div>'
-        if (i !== pictureList.length - 1) {
-            statusContainer.innerHTML += '<span id="entries-loading">Einträge werden geladen...</span>'
-        } else {
-            try {
-                document.getElementById('new-picture-button').addEventListener('click', function () { uploadPictureScreen() });
-                document.getElementById('new-picture-button').removeAttribute("disabled")
-            } catch {
-                console.debug('No new pic button')
+    const app = document.getElementById("app")
+
+    showSite(0, pictureList)
+}
+
+function importSchool() {
+    console.log("Import school")
+    document.getElementById("import-school-fields").innerHTML = '<input id="import-school-input" type="file"><br><input type="text" placeholder="Schul-ID" id="school-id"><br><button id="import-school-upload">Hochladen</button>'
+    document.getElementById("import-school-upload").addEventListener("click", () => {
+        let csv = document.getElementById("import-school-input").files[0]
+        const reader = new FileReader()
+        reader.onload = async (e) => {
+            let schoolId = document.getElementById("school-id").value
+            /*let { data, error } = await supabase
+                .from('classes')
+                .select('*')
+                .eq("school_id", schoolId)*/
+            csv = e.target.result
+            csv = csv.split("\n")
+            csv = csv.slice(1, csv.length)
+            for (let i = 0; i < csv.length; i++) {
+                csv[i] = csv[i].split(",");
+                for (let j = 0; j < csv[i].length; j++) {
+                    csv[i][j] = csv[i][j].substr(1, csv[i][j].length - 2);
+                }
+            }
+            console.log(csv)
+            for (let i = 0; i < csv.length; i++) {
+                const { data: classes, error: classError } = await supabase
+                    .from('classes')
+                    .select('*')
+                    .eq("school_id", schoolId)
+                    .eq("name", csv[i][6])
+                if (classError) return;
+                let classID = null;
+                if (classes.length === 0) {
+                    const { error } = await supabase
+                        .from('classes')
+                        .insert([
+                            { name: csv[i][6], school_id: schoolId },
+                        ])
+                        .select()
+                    if (error) return;
+                    const { data: newClasses, error: ncError } = await supabase
+                        .from('classes')
+                        .select('*')
+                        .eq("school_id", schoolId)
+                        .eq("name", csv[i][6])
+                    if (ncError) return;
+                    classID = newClasses[0].id
+                } else {
+                    classID = classes[0].id
+                }
+                const { data: user, error: userError } = await supabase.auth.admin.createUser({
+                    email: csv[i][0] + '@lama-id.de',
+                    password: new Date(csv[i][5]).toLocaleDateString('de-DE', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                    }),
+                    email_confirm: true
+                })
+                if (userError) {
+                    return;
+                }
+                let userId = user.user.id
+                const { error } = await supabase
+                    .from('users')
+                    .insert([
+                        { id: userId, public_id: csv[i][0], school_id: schoolId, class_id: classID, first_name: csv[i][4], last_name: csv[i][3], birthdate: csv[i][5], stud_id: csv[i][2], valid_date: csv[i][8], delete_date: csv[i][11] },
+                    ])
+                    .select()
+                if (error) return;
             }
         }
-    }
-}
-
-async function loggedIn() {
-    console.log(navigator.userAgent);
-    const { data: pictureList, error } = await supabase
-        .from('picture_list')
-        .select()
-        .eq('user_id', userID)
-    if (error) {
-        console.warn(error);
-        showError();
-        return;
-    }
-
-    const { data: users, error: userError } = await supabase
-        .from('users')
-        .select('*, class:class_id(*), school:school_id(*)')
-        .eq('id', userID);
-    if (userError) {
-        console.warn(userError);
-        showError();
-        return;
-    }
-    user = users[0]
-    if (!user) {
-        console.warn('User is empty');
-        showError();
-        return;
-    }
-    console.log('User data fetched', user);
-
-    document.getElementById("username-span").innerText = user.first_name + " " + user.last_name;
-
-    if (pictureList.length === 0) {
-        console.log('No picture uploaded -> showing Upload Picture Screen');
-        uploadPictureScreen();
-    } else {
-        console.log('There was already a picture uploaded -> showing Status Screen. Picture List:', pictureList);
-        statusScreen();
-    }
-}
-
-async function logUserIn() {
-    document.getElementById("login").disabled = "true";
-    document.getElementById("login").innerText = "Anmelden...";
-    const { data, error } = await supabase.auth.signInWithPassword({
-        email: document.getElementById('id-input').value + '@lama-id.de',
-        password: document.getElementById('password').value,
-    });
-    if (error) {
-        console.warn(error);
-        document.getElementById("login").removeAttribute('disabled')
-        document.getElementById("login").innerText = "Anmelden";
-        document.getElementById('login-error').style.display = 'grid';
-    } else {
-        userID = data.user.id;
-        console.log('Successful login. ID is', userID);
-        document.getElementById('login-div').style.display = 'none';
-        document.getElementById('app-container').style.display = 'flex';
-        loggedIn();
-    }
-}
-
-function showDoc(type) {
-    window.scrollTo(0, 0);
-    const docs = {
-        "imprint": `<p style="text-align: center;">
-        <strong>Impressum</strong></p>
-        <p><strong><br />Diensteanbieter gemäß § 5 des Telemediengesetzes</strong></p>
-        <p> Lamarketing e.K.</p> <p> Andreas Vogt</p>
-        <p><strong><br />Anschrift & Kontaktdaten</strong></p>
-        <p> Jahnstraße 16<br />71729 Erdmannhausen</p>
-        <p> Telefon: <a href=tel:+49714450793800">07144-50793800</a> &#40;kein Support&#41;<br />Fax: 07144-50793805 &#40;kein Support&#41;<br />Mail: <a href="mailto:team@agentur-lamarketing.de">team@agentur-lamarketing.de</a> &#40;kein Support&#41;</p>
-        <p><strong><br />Handelsregister</strong></p>
-        <p> Amtsgericht Stuttgart - HRA 736763</p> <p><strong><br />Umsatzsteuer-Identifikationsnummer</strong></p> <p> DE316866376</p>
-        <p><strong><br />Streitbeilegung</strong></p>
-        <p>Zur Teilnahme an einem Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle sind wir nicht bereit und nicht verpflichtet.</p>
-        <p><strong><br />Berufshaftpflichtversicherung</strong></p>
-        <p> SV SparkassenVersicherung Holding AG<br />Löwentorstraße 65<br />70376 Stuttgart</p>`,
-
-        "gdpr": `<p style="text-align: center;"><strong>Datenschutzerklärung</strong></p>
-        <p><br />Nachfolgend informieren wir Sie über die Verarbeitung Ihrer personenbezogenen Daten im Rahmen der Nutzung unseres Online-Angebots.</p>
-        <p><strong><br />Verantwortlicher</strong></p>
-        <p> Den Namen und die Kontaktdaten des Verantwortlichen finden Sie im Impressum. </p>
-        <p><strong><br />Ansprechpartner</strong></p>
-        <p> Bei Fragen zum Datenschutz wenden Sie sich bitte an die im Impressum angegebenen Kontaktdaten. </p>
-        <p><strong><br />Speicherdauer</strong></p>
-        <p>Wir löschen Ihre personenbezogenen Daten grundsätzlich dann, wenn diese für die Zwecke, für die sie erhoben oder auf sonstige Weise verarbeitet wurden, nicht mehr notwendig sind.</p>
-        <p>Falls wir Sie um Ihre Einwilligung gebeten und Sie diese erteilt haben, löschen wir Ihre personenbezogenen Daten, wenn Sie Ihre Einwilligung widerrufen und es an einer anderweitigen Rechtsgrundlage für die Verarbeitung fehlt.</p>
-        <p>Wir löschen Ihre personenbezogenen Daten, wenn Sie Widerspruch gegen die Verarbeitung einlegen und keine vorrangigen berechtigten Gründe für die Verarbeitung vorliegen oder Sie Widerspruch gegen die Verarbeitung zum Zwecke der Direktwerbung oder eines damit in Verbindung stehenden Profiling einlegen.</p>
-        <p>Ist eine Löschung nicht möglich, weil eine Verarbeitung noch zur Erfüllung einer rechtlichen Verpflichtung (gesetzliche Aufbewahrungsfristen etc.), der wir unterliegen, oder zur Geltendmachung, Ausübung oder Verteidigung von Rechtsansprüchen erforderlich ist, schränken wir die Verarbeitung Ihrer personenbezogenen Daten ein.</p>
-        <p>Weitere Informationen zur Speicherdauer finden Sie auch in den nachfolgenden Passagen.</p>
-        <p><strong><br />Ihre Rechte</strong></p>
-        <p>Sie haben uns gegenüber folgende Rechte hinsichtlich Ihrer personenbezogenen Daten:<br /> - Recht auf Auskunft<br /> - Recht auf Berichtigung<br /> - Recht auf Löschung<br /> - Recht auf Einschränkung der Verarbeitung<br /> - Recht auf Widerspruch gegen die Verarbeitung<br /> - Recht auf Datenübertragbarkeit </p>
-        <p style="background-color: #cccccc; padding: 15px;"><strong> Sie haben das Recht, aus Gründen, die sich aus Ihrer besonderen Situation ergeben, jederzeit gegen die Verarbeitung Ihrer personenbezogenen Daten, die aufgrund von Artikel 6 Abs. 1 lit. e oder f DS-GVO erfolgt, Widerspruch einzulegen; dies gilt auch für ein auf diese Bestimmungen gestütztes Profiling. Wir verarbeiten Ihre personenbezogenen Daten dann nicht mehr, es sei denn, wir können zwingende schutzwürdige Gründe für die Verarbeitung nachweisen, die Ihre Interessen, Rechte und Freiheiten überwiegen, oder die Verarbeitung dient der Geltendmachung, Ausübung oder Verteidigung von Rechtsansprüchen. <br /> Falls wir Ihre personenbezogenen Daten verarbeiten, um Direktwerbung zu betreiben, haben Sie das Recht, jederzeit Widerspruch gegen die Verarbeitung Ihrer personenbezogenen Daten zum Zwecke derartiger Werbung einzulegen; dies gilt auch für das Profiling, soweit es mit solcher Direktwerbung in Verbindung steht. Wir werden Ihre personenbezogenen Daten dann nicht mehr für diese Zwecke verarbeiten. </strong> </p>
-        <p>Sie haben das Recht, eine Einwilligung zur Verarbeitung Ihrer personenbezogenen Daten jederzeit zu widerrufen, falls Sie uns eine solche Einwilligung erteilt haben. Durch den Widerruf der Einwilligung wird die Rechtmäßigkeit der aufgrund der Einwilligung bis zum Widerruf erfolgten Verarbeitung nicht berührt.</p>
-        <p>Sie haben das Recht, sich bei einer Aufsichtsbehörde über die Verarbeitung Ihrer personenbezogenen Daten durch uns zu beschweren.</p>
-        <p><strong><br />Bereitstellung Ihrer personenbezogenen Daten</strong></p>
-        <p>Die Bereitstellung Ihrer personenbezogenen Daten ist grundsätzlich weder gesetzlich noch vertraglich vorgeschrieben und nicht für einen Vertragsabschluss erforderlich. Sie sind grundsätzlich nicht verpflichtet, Ihre personenbezogenen Daten bereitzustellen. Soweit dies dennoch einmal der Fall sein sollte, weisen wir Sie bei Erhebung Ihrer personenbezogenen Daten gesondert darauf hin (beispielsweise durch Kennzeichnung der Pflichtfelder bei Eingabeformularen).</p>
-        <p>Die Nichtbereitstellung Ihrer personenbezogenen Daten hat regelmäßig zur Folge, dass wir Ihre personenbezogenen Daten nicht für einen der nachfolgend beschriebenen Zwecke verarbeiten und Sie ein mit der jeweiligen Verarbeitung zusammenhängendes Angebot nicht wahrnehmen können (Beispiel: Ohne Bereitstellung Ihrer E-Mail-Adresse erhalten Sie unseren Newsletter nicht).</p>
-        <p><strong><br />Webhosting</strong></p>
-        <p>Zum Webhosting setzen wir externe Dienste ein. Diese Dienste können Zugriff auf personenbezogene Daten haben, die im Rahmen der Nutzung unseres Online-Angebots verarbeitet werden.</p>
-        <p><strong><br />Webserver-Logfiles</strong></p>
-        <p>Wir verarbeiten Ihre personenbezogenen Daten, um Ihnen unser Online-Angebot anzeigen zu können und die Stabilität und Sicherheit unseres Online-Angebots zu gewährleisten. Dabei werden Informationen (beispielsweise angefragtes Element, aufgerufene URL, Betriebssystem, Datum und Uhrzeit der Anfrage, Browsertyp und die verwendete Version, IP-Adresse, verwendetes Protokoll, übertragene Datenmenge, User Agent, Referrer URL, Zeitzonendifferenz zur Greenwich Mean Time (GMT) und/oder HTTP-Statuscode) in sogenannten Logfiles (Access-Log, Error-Log etc.) gespeichert.</p>
-        <p>Falls wir Sie um Ihre Einwilligung gebeten und Sie diese erteilt haben, ist die Rechtsgrundlage für die Verarbeitung Art. 6 Abs. 1 lit. a DS-GVO. Falls wir Sie nicht um Ihre Einwilligung gebeten haben, ist die Rechtsgrundlage für die Verarbeitung Art. 6 Abs. 1 lit. f DS-GVO. Unser berechtigtes Interesse ist dabei die ordnungsgemäße Anzeige unseres Online-Angebots und die Gewährleistung der Stabilität und Sicherheit unseres Online-Angebots.</p>
-        <p><strong><br />Sicherheit</strong></p>
-        <p>Aus Sicherheitsgründen und zum Schutz der Übertragung Ihrer personenbezogenen Daten und anderer vertraulicher Inhalte setzen wir auf unserer Domain eine Verschlüsselung ein. Dies können Sie in der Browserzeile an der Zeichenfolge „https://“ und dem Schloss-Symbol erkennen.</p>
-        <p>Wir nutzen Firewalls und Malware-Scanner von externen Diensten, um die Sicherheit unseres Online-Angebots zu gewährleisten.</p>
-        <p>Falls wir Sie um Ihre Einwilligung gebeten und Sie diese erteilt haben, ist die Rechtsgrundlage für die Verarbeitung Art. 6 Abs. 1 lit. a DS-GVO. Falls wir Sie nicht um Ihre Einwilligung gebeten haben, ist die Rechtsgrundlage für die Verarbeitung Art. 6 Abs. 1 lit. f DS-GVO. Unser berechtigtes Interesse ist dabei die Sicherheit unseres Online-Angebots.</p>
-        <p>Im Rahmen der Nutzung der externen Dienste kann es auch zum Profiling (zu Zwecken der Werbung, personalisierten Information etc.) kommen. Das Profiling kann auch dienst- und geräteübergreifend erfolgen. Weitere Informationen zu den eingesetzten Diensten, zum Umfang der Datenverarbeitung und zu den Technologien und Verfahren beim Einsatz der jeweiligen Dienste sowie dazu, ob beim Einsatz der jeweiligen Dienste Profiling stattfindet, und ggf. Informationen über die involvierte Logik sowie die Tragweite und die angestrebten Auswirkungen einer derartigen Verarbeitung für Sie finden Sie in den weiterführenden Informationen über die von uns eingesetzten Dienste am Ende dieser Passage und unter den dort bereitgestellten Links.</p>
-        <p><strong><br />Kontaktaufnahme</strong></p>
-        <p>Falls Sie mit uns Kontakt aufnehmen, verarbeiten wir Ihre personenbezogenen Daten, um Ihre Kontaktaufnahme zu bearbeiten.</p>
-        <p>Falls wir Sie um Ihre Einwilligung gebeten und Sie diese erteilt haben, ist die Rechtsgrundlage für die Verarbeitung Art. 6 Abs. 1 lit. a DS-GVO. Falls wir Sie nicht um Ihre Einwilligung gebeten haben, ist die Rechtsgrundlage für die Verarbeitung Art. 6 Abs. 1 lit. f DS-GVO. Unser berechtigtes Interesse ist dabei die Bearbeitung Ihrer Kontaktaufnahme. Falls die Verarbeitung zur Erfüllung eines Vertrags mit Ihnen oder zur Durchführung vorvertraglicher Maßnahmen aufgrund Ihrer Anfrage erforderlich ist, ist die Rechtsgrundlage für die Verarbeitung zudem Art. 6 Abs. 1 lit. b DS-GVO.</p>
-        <p>Zur Bereitstellung und Pflege unserer E-Mail-Postfächer setzen wir externe Dienste ein. Diese Dienste können Zugriff auf personenbezogene Daten haben, die im Rahmen der Kontaktaufnahme mit uns verarbeitet werden. Weitere Informationen zu den eingesetzten Diensten, zum Umfang der Datenverarbeitung und zu den Technologien und Verfahren beim Einsatz der jeweiligen Dienste finden Sie nachfolgend in den weiterführenden Informationen über die von uns eingesetzten Dienste und unter den dort bereitgestellten Links:</p>
-        <p> <u>Microsoft Exchange</u><br /> Anbieter: Microsoft Ireland Operations Limited, Irland. Die Microsoft Ireland Operations Limited ist eine Tochtergesellschaft der Microsoft Corporation, Vereinigte Staaten von Amerika.<br /> Website: <a href="https://www.microsoft.com/de-de/microsoft-365/exchange/email" target="new">https://www.microsoft.com/de-de/microsoft-365/exchange/email</a><br /> Weitere Informationen & Datenschutz: <a href="https://privacy.microsoft.com/de-de/" target="new">https://privacy.microsoft.com/de-de/</a> und <a href="https://www.microsoft.com/de-de/trust-center/privacy" target="new">https://www.microsoft.com/de-de/trust-center/privacy</a> <br />Garantie: EU-Standardvertragsklauseln. Eine Kopie der EU-Standardvertragsklauseln können Sie bei uns anfordern. Der Anbieter hat sich dem EU-US Data Privacy Framework (<a href="https://www.dataprivacyframework.gov" target="new">https://www.dataprivacyframework.gov</a>) angeschlossen, das auf Basis eines Beschlusses der Europäischen Kommission die Einhaltung eines angemessenen Datenschutzniveaus gewährleistet. </p>`,
-    };
-    document.getElementById('doc').innerHTML = `<button id="close-button" style="position: absolute; top: 1.5em; right: 1.5em;" aria-label="Schließen">×</button>${docs[type]}`;
-    document.getElementById('doc').style.display = 'block';
-    document.getElementById('close-button').addEventListener("click", () => {
-        document.getElementById('doc').style.display = 'none';
+        reader.readAsText(csv)
     })
 }
 
-window.scrollTo(0, 0);
-document.getElementById("login").addEventListener("click", logUserIn)
-document.getElementById("imprint").addEventListener("click", () => { showDoc("imprint") })
-document.getElementById("gdpr").addEventListener("click", () => { showDoc("gdpr") })
-document.getElementById("app-logo").addEventListener("click", () => { window.location.reload(); })
-document.addEventListener("keypress", (event) => {
-    if (event.key === 'Enter' && !userID && document.getElementById('password').value) {
-        logUserIn()
-    }
-});
-
-const logLevel = new URLSearchParams(window.location.search).get('logLevel');
-function createLogBindings() {
-    if (!logLevel) return
-    let errorBind = console.error.bind(console);
-    let warnBind = console.warn.bind(console);
-    let logBind = console.log.bind(console);
-    let debugBind = console.warn.bind(console);
-
-    console.error = async (text, json) => {
-        await supabase
-            .from('logs')
-            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'ERROR', log: text + ' ' + JSON.stringify(json) })
-        errorBind(text, json);
-    }
-    if (logLevel === 'error') return
-    console.warn = async (text, json) => {
-        await supabase
-            .from('logs')
-            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'WARN', log: text + ' ' + JSON.stringify(json) })
-        warnBind(text, json);
-    }
-    if (logLevel === 'warn') return
-    console.log = async (text, json) => {
-        await supabase
-            .from('logs')
-            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'LOG', log: text + ' ' + JSON.stringify(json) })
-        logBind(text, json);
-    }
-    if (logLevel === 'log') return
-    console.debug = async (text, json) => {
-        await supabase
-            .from('logs')
-            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'DEBUG', log: text + ' ' + JSON.stringify(json) })
-        debugBind(text, json);
-    }
+async function logUserIn() {
+    supabase = await createClient(supabaseUrl, document.getElementById("service-key").value)
+    document.getElementById('login-div').style.display = 'none';
+    console.log('Supabase client started', supabase)
+    /*const { data: user, error: userError } = await supabase.auth.admin.createUser({
+        email: 'classifier@lama-id.de',
+        password: '',
+        email_confirm: true,
+        role: 'classifier'
+    })*/
 }
-createLogBindings()
+
+async function logEmailIn() {
+    supabase = await createClient(supabaseUrl, supabaseKey)
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+    });
+    console.log(data.user.role)
+    document.getElementById('login-div').style.display = 'none';
+    console.log('Supabase client started', supabase)
+}
+
+
+document.getElementById("login").addEventListener("click", logUserIn)
+document.getElementById("login-email").addEventListener("click", logEmailIn)
+document.getElementById("import-school").addEventListener("click", importSchool)
+document.getElementById("create-pdfs").addEventListener("click", createPDFs)
+document.getElementById("start-classification").addEventListener("click", classify)
