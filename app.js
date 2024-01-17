@@ -49,6 +49,8 @@ function closeCanvas() {
 }
 
 function cropPhoto(pic) {
+    console.log('Cropping photo');
+    console.debug(pic);
     document.querySelector('[id^="b_1urq61qi_"]').children[0].style.zIndex = '990';
     document.body.style.overflowY = 'hidden'
     document.body.style.position = 'fixed'
@@ -59,8 +61,9 @@ function cropPhoto(pic) {
         clearTimeout(timeout);
         timeout = setTimeout(() => {
             if (document.getElementById("crop-canvas")) {
+                console.debug('Resize')
                 closeCanvas();
-                cropPhoto(pic, i, pictureList);
+                cropPhoto(pic);
             }
         }, 250);
     })
@@ -74,6 +77,7 @@ function cropPhoto(pic) {
     appEle.innerHTML += '<canvas id="crop-canvas"></canvas><div class="center-content" id="pic-border-container"><div id="pic-border"></div><button id="pic-border-btn">OK</button></div>'
     const borderDims = document.getElementById("pic-border").getBoundingClientRect();
     document.getElementById("pic-border-btn").addEventListener('click', () => {
+        console.debug('CLosing of canvas requested by click')
         let leftPic = ((((windowWidth / 2) - cameraOffset.x) * cameraZoom) - (((windowWidth / 2) - borderDims.left) - ((pic.width * cameraZoom) / 2))) / cameraZoom
         let topPic = ((((windowHeight / 2) - cameraOffset.y) * cameraZoom) - (((windowHeight / 2) - borderDims.top) - ((pic.height * cameraZoom) / 2))) / cameraZoom
         let rightPic = borderDims.width / cameraZoom
