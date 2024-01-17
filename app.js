@@ -420,7 +420,7 @@ async function statusScreen() {
         }
         statusContainer.innerHTML += `<div style="display: flex;">
         <div class="status-div">
-        <img class="status-img" src="${imageUrl}" style="margin-top: ${-(4.4 / frame[3]) * frame[1]}em; height: ${(4.4 / frame[3]) * height}em; margin-left: ${-(3.02 / frame[2]) * frame[0]}em; width: ${((3.02 / frame[2]) * width)/*+3.02*/}em; clip-path: polygon(${(frame[0] / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${((frame[3] + frame[1]) / height) * 100}%, ${((frame[0] / width) * 100)}% ${((frame[3] + frame[1]) / height) * 100}%);">
+        <img class="status-img" src="${imageUrl}" style="margin-top: ${-(4.4 / frame[3]) * frame[1]}em; height: ${(4.4 / frame[3]) * height}em; margin-left: ${-(3.52 / frame[2]) * frame[0]}em; width: ${((3.52 / frame[2]) * width)}em; clip-path: polygon(${(frame[0] / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${((frame[3] + frame[1]) / height) * 100}%, ${((frame[0] / width) * 100)}% ${((frame[3] + frame[1]) / height) * 100}%);">
         <div>
         <span>Schülerausweis 20${user.public_id.toString().slice(3, 5)}</span>
         <br>
