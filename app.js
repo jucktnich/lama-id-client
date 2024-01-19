@@ -25,12 +25,12 @@ function uploadButtonUpdate() {
     else document.getElementById('upload-button').disabled = 'true';
 }
 
-function picFinished(pic, frame, size) {
+function picFinished(pic, frame, size, cropDisabled = false) {
     console.log("Cropping of the picture finished");
 
     document.getElementById("consent-1").addEventListener('change', (event) => { currentDisableStatus[1] = event.currentTarget.checked; uploadButtonUpdate(); });
     document.getElementById("consent-2").addEventListener('change', (event) => { currentDisableStatus[2] = event.currentTarget.checked; uploadButtonUpdate(); });
-    document.getElementById("upload-button").addEventListener('click', () => { uploadPicture(pic, frame, size) })
+    document.getElementById("upload-button").addEventListener('click', () => { uploadPicture(pic, frame, size, cropDisabled) })
     currentDisableStatus[0] = true;
     uploadButtonUpdate();
     document.getElementById("photo-upload-img").src = "icons/check.svg"
@@ -77,7 +77,7 @@ function cropPhoto(pic) {
     appEle.innerHTML += '<canvas id="crop-canvas"></canvas><div class="center-content" id="pic-border-container"><div id="pic-border"></div><button id="pic-border-btn">OK</button></div>'
     const borderDims = document.getElementById("pic-border").getBoundingClientRect();
     document.getElementById("pic-border-btn").addEventListener('click', () => {
-        console.debug('CLosing of canvas requested by click')
+        console.debug('Closing of canvas requested by click')
         let leftPic = ((((windowWidth / 2) - cameraOffset.x) * cameraZoom) - (((windowWidth / 2) - borderDims.left) - ((pic.width * cameraZoom) / 2))) / cameraZoom
         let topPic = ((((windowHeight / 2) - cameraOffset.y) * cameraZoom) - (((windowHeight / 2) - borderDims.top) - ((pic.height * cameraZoom) / 2))) / cameraZoom
         let rightPic = borderDims.width / cameraZoom
@@ -241,7 +241,11 @@ function validate() {
         image.onload = function () {
             if (this.width) {
                 console.log('First uploaded file is an image');
-                cropPhoto(this)
+                if(!disableCrop) {
+                    cropPhoto(this)
+                } else {
+                    picFinished(this, [0, 0, 0, 0], [this.width, this.height], true)
+                }
             } else {
                 console.warn('First uploaded file is NOT an image');
                 currentDisableStatus[0] = false;
@@ -265,15 +269,20 @@ function uploadSuccessfulScreen() {
     document.getElementById("go-to-status").addEventListener('click', statusScreen)
 }
 
-async function uploadPicture(pic, frame, size) {
-    console.log("Uploading picture")
+async function uploadPicture(pic, frame, size, cropDisabled) {
+    console.log("Uploading picture", pic)
     document.getElementById("upload-button").disabled = "true";
     document.getElementById("upload-button").innerText = "Lädt...";
     let c = document.createElement("canvas"),
         ctx = c.getContext("2d");
     c.width = pic.width;
     c.height = pic.height;
-    ctx.drawImage(pic, 0, 0);
+    try {
+        ctx.drawImage(pic, 0, 0);
+    } catch {
+        console.warn("Couldnt draw picture");
+        return;
+    }
     c.toBlob(async (blob) => {
         let converted = new File([blob], "converted.jpg", { type: "image/jpeg" });
         /*if (converted.size < 500) {
@@ -294,7 +303,7 @@ async function uploadPicture(pic, frame, size) {
         }
         const { error: pictureListError } = await supabase
             .from('picture_list')
-            .insert({ picture_id: id, user_id: userID, frame: frame, size: size })
+            .insert({ picture_id: id, user_id: userID, frame: frame, size: size, crop_disabled: cropDisabled })
         if (pictureListError) {
             console.warn(pictureListError);
             showError();
@@ -581,7 +590,8 @@ document.addEventListener("keypress", (event) => {
     }
 });
 
-const logLevel = new URLSearchParams(window.location.search).get('logLevel');
+const params = new URLSearchParams(window.location.search);
+const logLevel = params.get('logLevel');
 function createLogBindings() {
     if (!logLevel) return
     let errorBind = console.error.bind(console);
@@ -617,4 +627,6 @@ function createLogBindings() {
         debugBind(text, json);
     }
 }
+const disableCrop = (params.get('disableCrop') === 'true') ? true: false;
+console.log(disableCrop)
 createLogBindings()
