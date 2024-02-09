@@ -628,5 +628,13 @@ function createLogBindings() {
     }
 }
 const disableCrop = (params.get('disableCrop') === 'true') ? true: false;
-console.log(disableCrop)
+const loginViaParams = {
+    id: params.get('id'),
+    password: params.get('password')
+};
+if (loginViaParams.id) document.getElementById('id-input').value = loginViaParams.id;
+if (loginViaParams.password) document.getElementById('password').value = loginViaParams.password;
+if (loginViaParams.id && loginViaParams.password) {
+    logUserIn();
+}
 createLogBindings()
