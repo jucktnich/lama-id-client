@@ -241,7 +241,7 @@ function validate() {
         image.onload = function () {
             if (this.width) {
                 console.log('First uploaded file is an image');
-                if(!disableCrop) {
+                if (!disableCrop) {
                     cropPhoto(this)
                 } else {
                     picFinished(this, [0, 0, 0, 0], [this.width, this.height], true)
@@ -443,7 +443,7 @@ async function statusScreen() {
         </div>
         <p class="status" style="background: ${color};">${status}</p>
         </div>`;
-        if (pictureList[i].rejection_reason) statusContainer.innerHTML += `<div style="display: grid; grid-template-columns: auto auto;"><div></div><div class="error"><img src="icons/warning.svg"><span class="rejection-error"><b>Foto wurde abgelehnt:</b><br>${pictureList[i].rejection_reason}</span></div></div>`
+        if (pictureList[i].rejection_reason) statusContainer.innerHTML += `<div style="display: grid; grid-template-columns: auto max-content;"><div></div><div class="error"><img class="error-img" src="icons/warning.svg"><span class="rejection-error"><b>Foto wurde abgelehnt</b><br>${pictureList[i].rejection_reason}</span></div></div>`
         statusContainer.innerHTML += '</div>'
         if (i !== pictureList.length - 1) {
             statusContainer.innerHTML += '<span id="entries-loading">Einträge werden geladen...</span>'
@@ -470,23 +470,6 @@ async function loggedIn() {
         return;
     }
 
-    const { data: users, error: userError } = await supabase
-        .from('users')
-        .select('*, class:class_id(*), school:school_id(*)')
-        .eq('id', userID);
-    if (userError) {
-        console.warn(userError);
-        showError();
-        return;
-    }
-    user = users[0]
-    if (!user) {
-        console.warn('User is empty');
-        showError();
-        return;
-    }
-    console.log('User data fetched', user);
-
     document.getElementById("username-span").innerText = user.first_name + " " + user.last_name;
 
     if (pictureList.length === 0) {
@@ -507,15 +490,40 @@ async function logUserIn() {
     });
     if (error) {
         console.warn(error);
-        document.getElementById("login").removeAttribute('disabled')
-        document.getElementById("login").innerText = "Anmelden";
+        document.getElementById('login').removeAttribute('disabled')
+        document.getElementById('login').innerText = "Anmelden";
+        document.getElementById('login-error-text').innerHTML = '<b>Eingaben fehlerhaft</b><br>Bitte ID und Code überprüfen'
         document.getElementById('login-error').style.display = 'grid';
     } else {
         userID = data.user.id;
         console.log('Successful login. ID is', userID);
-        document.getElementById('login-div').style.display = 'none';
-        document.getElementById('app-container').style.display = 'flex';
-        loggedIn();
+        const { data: users, error: userError } = await supabase
+            .from('users')
+            .select('*, class:class_id(*), school:school_id(*)')
+            .eq('id', userID);
+        if (userError) {
+            console.warn(userError);
+            showError();
+            return;
+        }
+        user = users[0]
+        if (!user) {
+            console.warn('User is empty');
+            showError();
+            return;
+        }
+        console.log('User data fetched', user);
+        if (!user.school.open_campaign && !ignoreCampaignStatus) {
+            console.log('Campaign is already closed')
+            document.getElementById('login').removeAttribute('disabled')
+            document.getElementById('login').innerText = "Anmelden";
+            document.getElementById('login-error-text').innerHTML = '<b>Portal geschlossen</b><br>Für deine Schule werden keine neuen Fotos mehr akzeptiert'
+            document.getElementById('login-error').style.display = 'grid';
+        } else {
+            document.getElementById('login-div').style.display = 'none';
+            document.getElementById('app-container').style.display = 'flex';
+            loggedIn();
+        }
     }
 }
 
@@ -583,6 +591,8 @@ window.scrollTo(0, 0);
 document.getElementById("login").addEventListener("click", logUserIn)
 document.getElementById("imprint").addEventListener("click", () => { showDoc("imprint") })
 document.getElementById("gdpr").addEventListener("click", () => { showDoc("gdpr") })
+document.getElementById("tos").addEventListener("click", () => { window.open('https://info.lama-id.de/agb', '_blank').focus(); })
+document.getElementById("info").addEventListener("click", () => { window.open('https://info.lama-id.de/', '_blank').focus(); })
 document.getElementById("app-logo").addEventListener("click", () => { window.location.reload(); })
 document.addEventListener("keypress", (event) => {
     if (event.key === 'Enter' && !userID && document.getElementById('password').value) {
@@ -627,7 +637,8 @@ function createLogBindings() {
         debugBind(text, json);
     }
 }
-const disableCrop = (params.get('disableCrop') === 'true') ? true: false;
+const disableCrop = (params.get('disableCrop') === 'true') ? true : false;
+const ignoreCampaignStatus = (params.get('ignoreCampaignStatus') === 'true') ? true : false;
 const loginViaParams = {
     id: params.get('id'),
     password: params.get('password')

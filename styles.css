@@ -93,14 +93,20 @@ summary {
 .error {
     display: inline-grid;
     grid-template-columns: auto auto;
+    gap: 1.5em;
     background: var(--error-background) 0% 0% no-repeat padding-box;
-    opacity: 1;
-    padding: 1em;
     color: var(--text);
     text-align: left;
-    font: normal normal 600 18px/24px Open Sans;
+    font: normal normal normal 18px/28px Open Sans;
     letter-spacing: 0px;
-    min-width: 0;
+    opacity: 1;
+    padding: 1em 2em;
+    letter-spacing: 0px;
+}
+
+.error-img {
+    margin: auto;
+    display: block;
 }
 
 #status-container {
@@ -142,13 +148,6 @@ summary {
     text-transform: uppercase;
     text-align: center;
     opacity: 1;
-}
-
-.rejection-error {
-    color: var(--text);
-    text-align: left;
-    font: normal normal normal 18px/28px Open Sans;
-    letter-spacing: 0px;
 }
 
 #app-container,
@@ -208,7 +207,7 @@ summary {
 footer {
     position: absolute;
     display: grid;
-    grid-template-columns: auto auto;
+    grid-template-columns: auto auto auto auto;
     gap: 1em;
     bottom: 0;
     left: 0;
@@ -305,13 +304,6 @@ input[type="file"] {
     opacity: 1;
 }
 
-/*#explainer-button {
-    /*position: absolute;
-    bottom: 0;
-    right: 0;*/
-/*cursor: pointer;
-}*/
-
 #explainer {
     border-left: 3px solid var(--akzente-buttons);
     padding-left: 1.5em;
@@ -401,12 +393,8 @@ input[type="file"] {
     content: "";
     height: calc(1.15em - 4px);
     width: calc(1.15em - 4px);
-    left: 2px
-        /*calc(0.175em)*/
-    ;
-    bottom: 2px
-        /*calc(0.175em)*/
-    ;
+    left: 2px;
+    bottom: 2px;
     background-color: white;
     border: 2px solid #3E3E3E;
     -webkit-transition: .4s;

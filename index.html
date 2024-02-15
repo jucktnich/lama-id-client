@@ -20,8 +20,8 @@
             <input type="text" pattern="^[0-9]" inputmode="numeric" name="id" id="id-input" placeholder="ID" required />
             <input type="password" name="password" id="password" placeholder="Code" required />
             <button id="login">Anmelden</button>
-            <div style="display: none;" id="login-error" class="error"><img src="icons/warning.svg">
-                <div>Eingaben fehlerhaft!<br>Bitte ID und Code überprüfen!</div>
+            <div style="display: none;" id="login-error" class="error"><img class="error-img" src="icons/warning.svg">
+                <div id="login-error-text"></div>
             </div>
         </div>
     </div>
@@ -35,6 +35,8 @@
     <footer id="footer">
         <span id="imprint">Impressum</span>
         <span id="gdpr">Datenschutz</span>
+        <span id="tos">AGB</span>
+        <span id="info">Infos</span>
     </footer>
     <div id="doc" class="doc" style="display: none;"></div>
     <script type="module" src="./app.js"></script>
