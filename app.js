@@ -50,8 +50,11 @@ function closeCanvas() {
 
 function cropPhoto(pic) {
     console.log('Cropping photo');
-    console.debug(pic);
-    document.querySelector('[id^="b_1urq61qi_"]').children[0].style.zIndex = '990';
+    try {
+        document.getElementById('fsw-btn').style.zIndex = '990';
+    } catch (error) {
+        console.warn('No support-button found')
+    }
     document.body.style.overflowY = 'hidden'
     document.body.style.position = 'fixed'
     document.body.style.touchAction = 'none'
@@ -589,8 +592,8 @@ function showDoc(type) {
 
 window.scrollTo(0, 0);
 document.getElementById("login").addEventListener("click", logUserIn)
-document.getElementById("imprint").addEventListener("click", () => { showDoc("imprint") })
-document.getElementById("gdpr").addEventListener("click", () => { showDoc("gdpr") })
+document.getElementById("imprint").addEventListener("click", () => { window.open('https://info.lama-id.de/impressum', '_blank').focus(); /*showDoc("imprint")*/ })
+document.getElementById("gdpr").addEventListener("click", () => { window.open('https://info.lama-id.de/datenschutz', '_blank').focus(); /*showDoc("gdpr")*/ })
 document.getElementById("tos").addEventListener("click", () => { window.open('https://info.lama-id.de/agb', '_blank').focus(); })
 document.getElementById("info").addEventListener("click", () => { window.open('https://info.lama-id.de/', '_blank').focus(); })
 document.getElementById("app-logo").addEventListener("click", () => { window.location.reload(); })
@@ -599,6 +602,7 @@ document.addEventListener("keypress", (event) => {
         logUserIn()
     }
 });
+
 
 const params = new URLSearchParams(window.location.search);
 const logLevel = params.get('logLevel');
