@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 const supabaseUrl = 'https://supabase.lama-id.de'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzA0NDA5MjAwLAogICJleHAiOiAxODYyMjYyMDAwCn0.r_Iv-w4S5DncSzdO5CSIr0nIdOxG6kQFhzMkxvp6a4A'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzIxMjUzNjAwLAogICJleHAiOiAxODc5MDIwMDAwCn0.m5TdEY7e0ORCUNxKSDQSmRNjINgI6qIlyp38sCWlroE'
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 const appEle = document.getElementById("app");
@@ -305,8 +305,8 @@ async function uploadPicture(pic, frame, size, cropDisabled) {
             return;
         }
         const { error: pictureListError } = await supabase
-            .from('picture_list')
-            .insert({ picture_id: id, user_id: userID, frame: frame, size: size, crop_disabled: cropDisabled })
+            .from('pictures')
+            .insert({ id: id, user_id: userID, campaign_id: user.campaign.id, created_at: new Date(), frame: frame, size: size, crop_disabled: cropDisabled })
         if (pictureListError) {
             console.warn(pictureListError);
             showError();
@@ -370,60 +370,34 @@ async function statusScreen() {
     appEle.innerHTML = '<div id="status-container"><span id="entries-loading">Einträge werden geladen...</span></div>';
     const statusContainer = document.getElementById("status-container");
 
-    let { data: pictureList, error: pictureListError } = await supabase
-        .from('picture_list')
+    const { data: pictures, error: picturesError } = await supabase
+        .from('pictures')
         .select()
         .eq('user_id', userID)
         .order('created_at', { ascending: false });
-    if (pictureListError) {
-        console.warn(pictureListError);
+    if (picturesError) {
+        console.warn(picturesError);
         showError();
         return;
     }
 
-    const { data: verified, error: verifiedError } = await supabase
-        .from('verified_pictures')
-        .select()
-        .eq('user_id', userID)
-    if (verifiedError) {
-        console.warn(verifiedError);
-        showError();
-        return;
-    }
-
-    outer:
-    for (let i = 0; i < verified.length; i++) {
-        for (let j = 0; j < pictureList.length; j++) {
-            if (pictureList[j].picture_id === verified[i].picture_id) {
-                pictureList[j].status = verified[i].status;
-                pictureList[j].rejection_reason = verified[i].rejection_reason;
-                continue outer;
-            }
-        };
-    }
-
-    console.log('Showing the status with following pictures', pictureList);
-    for (let i = 0; i < pictureList.length; i++) {
-        let mrStatus;
-        if (i === 0) mrStatus = 'UPLOADED'
-        else mrStatus = 'WITHDRAWN'
-        if (pictureList[i].status !== undefined) {
-            mrStatus = pictureList[i].status
-            if (mrStatus === "UPLOADED" && i !== 0) mrStatus = 'WITHDRAWN';
-        }
+    console.log('Showing the status with following pictures', pictures);
+    for (let i = 0; i < pictures.length; i++) {
+        let mrStatus = pictures[i].status
+        if (mrStatus === "UPLOADED" && i !== 0) mrStatus = 'WITHDRAWN';
         const { data: file, error: fileError } = await supabase
             .storage
             .from('pictures')
-            .download(`${userID}/${pictureList[i].picture_id}.jpg`)
+            .download(`${userID}/${pictures[i].id}.jpg`)
         if (fileError) {
             console.warn(fileError);
             showError();
             return;
         }
         let imageUrl = URL.createObjectURL(file);
-        let frame = pictureList[i].frame
-        let width = pictureList[i].size[0]
-        let height = pictureList[i].size[1]
+        let frame = pictures[i].frame
+        let width = pictures[i].size[0]
+        let height = pictures[i].size[1]
         let status, color;
         if (mrStatus === 'UPLOADED' || mrStatus === 'CLARIFICATION') { status = 'Foto hochgeladen'; color = '#95E567'; }
         else if (mrStatus === 'WITHDRAWN') { status = 'Foto gelöscht'; color = '#bbb'; }
@@ -438,17 +412,17 @@ async function statusScreen() {
         <div class="status-div">
         <img class="status-img" src="${imageUrl}" style="margin-top: ${-(4.4 / frame[3]) * frame[1]}em; height: ${(4.4 / frame[3]) * height}em; margin-left: ${-(3.52 / frame[2]) * frame[0]}em; width: ${((3.52 / frame[2]) * width)}em; clip-path: polygon(${(frame[0] / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${((frame[3] + frame[1]) / height) * 100}%, ${((frame[0] / width) * 100)}% ${((frame[3] + frame[1]) / height) * 100}%);">
         <div>
-        <span>Schülerausweis 20${user.public_id.toString().slice(3, 5)}</span>
+        <span>${user.campaign.name}</span>
         <br>
-        <span>${user.class.name}, ${user.school.name}</span>
+        <span>${user.group.name}, ${user.school.name}</span>
         <br>
-        <span><b>Foto vom:</b> ${new Date(pictureList[i].created_at).toLocaleString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+        <span><b>Foto vom:</b> ${new Date(pictures[i].created_at).toLocaleString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
         </div>
         <p class="status" style="background: ${color};">${status}</p>
         </div>`;
-        if (pictureList[i].rejection_reason) statusContainer.innerHTML += `<div style="display: grid; grid-template-columns: auto max-content;"><div></div><div class="error"><img class="error-img" src="icons/warning.svg"><span class="rejection-error"><b>Foto wurde abgelehnt</b><br>${pictureList[i].rejection_reason}</span></div></div>`
+        if (pictures[i].rejection_reason) statusContainer.innerHTML += `<div style="display: grid; grid-template-columns: auto max-content;"><div></div><div class="error"><img class="error-img" src="icons/warning.svg"><span class="rejection-error"><b>Foto wurde abgelehnt</b><br>${pictures[i].rejection_reason}</span></div></div>`
         statusContainer.innerHTML += '</div>'
-        if (i !== pictureList.length - 1) {
+        if (i !== pictures.length - 1) {
             statusContainer.innerHTML += '<span id="entries-loading">Einträge werden geladen...</span>'
         } else {
             try {
@@ -463,10 +437,11 @@ async function statusScreen() {
 
 async function loggedIn() {
     console.log(navigator.userAgent);
-    const { data: pictureList, error } = await supabase
-        .from('picture_list')
+    const { data: pictures, error } = await supabase
+        .from('pictures')
         .select()
         .eq('user_id', userID)
+        .eq('campaign_id', user.campaign.id);
     if (error) {
         console.warn(error);
         showError();
@@ -475,11 +450,11 @@ async function loggedIn() {
 
     document.getElementById("username-span").innerText = user.first_name + " " + user.last_name;
 
-    if (pictureList.length === 0) {
+    if (pictures.length === 0) {
         console.log('No picture uploaded -> showing Upload Picture Screen');
         uploadPictureScreen();
     } else {
-        console.log('There was already a picture uploaded -> showing Status Screen. Picture List:', pictureList);
+        console.log('There was already a picture uploaded -> showing Status Screen. Picture List:', pictures);
         statusScreen();
     }
 }
@@ -488,7 +463,7 @@ async function logUserIn() {
     document.getElementById("login").disabled = "true";
     document.getElementById("login").innerText = "Anmelden...";
     const { data, error } = await supabase.auth.signInWithPassword({
-        email: document.getElementById('id-input').value + '@lama-id.de',
+        email: document.getElementById('id-input').value + '@external.users.lama-id.de',
         password: document.getElementById('password').value,
     });
     if (error) {
@@ -500,9 +475,9 @@ async function logUserIn() {
     } else {
         userID = data.user.id;
         console.log('Successful login. ID is', userID);
-        const { data: users, error: userError } = await supabase
+        let { data: users, error: userError } = await supabase
             .from('users')
-            .select('*, class:class_id(*), school:school_id(*)')
+            .select('*, school:school_id(*), campaigns:user_campaign(*)')
             .eq('id', userID);
         if (userError) {
             console.warn(userError);
@@ -515,8 +490,37 @@ async function logUserIn() {
             showError();
             return;
         }
+        let campaignIDs = [];
+        for (let i = 0; i < user.campaigns.length; i++) {
+            campaignIDs.push(user.campaigns[i].campaign_id);
+        }
+        const { data: campaigns, error: campaignsError } = await supabase
+            .from('campaigns')
+            .select('*')
+            .in('id', campaignIDs);
+        campaigns.sort((a, b) => {
+            return b.priority - a.priority;
+        })
+        if (campaignsError) {
+            console.warn(campaignsError);
+            showError();
+            return;
+        }
+        user.campaign = campaigns[0];
+        for (let i = 0; i < user.campaigns.length; i++) {
+            if (user.campaigns[i].campaign_id === user.campaign.id) {
+                user.campaign.group_id = user.campaigns[i].group_id
+                user.campaign.valid_date = user.campaigns[i].valid_date
+                user.campaign.paid = user.campaigns[i].paid
+            }
+        }
+        const { data: groups, error: groupsError } = await supabase
+            .from('groups')
+            .select('*')
+            .eq('id', user.campaign.group_id);
+        user.group = groups[0];
         console.log('User data fetched', user);
-        if (!user.school.open_campaign && !ignoreCampaignStatus) {
+        if (!user.campaign.active && !ignoreCampaignStatus) {
             console.log('Campaign is already closed')
             document.getElementById('login').removeAttribute('disabled')
             document.getElementById('login').innerText = "Anmelden";
@@ -641,7 +645,8 @@ function createLogBindings() {
         debugBind(text, json);
     }
 }
-const disableCrop = (params.get('disableCrop') === 'true') ? true : false;
+//const disableCrop = (params.get('disableCrop') === 'true') ? true : false;
+const disableCrop = true;
 const ignoreCampaignStatus = (params.get('ignoreCampaignStatus') === 'true') ? true : false;
 const loginViaParams = {
     id: params.get('id'),
