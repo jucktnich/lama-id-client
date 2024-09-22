@@ -1,0 +1,12 @@
+{
+    "supabase": {
+        "url": "https://supabase.lama-id.de",
+        "key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzIxMjUzNjAwLAogICJleHAiOiAxODc5MDIwMDAwCn0.m5TdEY7e0ORCUNxKSDQSmRNjINgI6qIlyp38sCWlroE"
+    },
+    "client": {
+        "logLevel": "error",
+        "disableCrop": true,
+        "ignoreCampaignStatus": false
+    },
+    "apiURL": "http://api.lama-id.de/"
+}

@@ -1,23 +1,15 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-const supabaseUrl = 'https://supabase.lama-id.de'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzIxMjUzNjAwLAogICJleHAiOiAxODc5MDIwMDAwCn0.m5TdEY7e0ORCUNxKSDQSmRNjINgI6qIlyp38sCWlroE'
-const supabase = createClient(supabaseUrl, supabaseKey)
+import { supabase, user, logUserInScript } from './supabase.js'
+import { config, uuidv4 } from './helpers.js';
 
 const appEle = document.getElementById("app");
 const sessionID = uuidv4();
 
 let currentDisableStatus = [false, false, false];
-let user = null;
-let userID = null;
 
-function showError(error = 'Fehler beim Laden der Daten. Wenn dieser Fehler häufiger auftritt, kontaktiere bitte den Support.') {
-    appEle.innerHTML = `<span class="error">${error}</span>`
-}
-
-function uuidv4() {
-    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
-        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-    );
+function showError(error = 'Es ist ein Fehler aufgetreten. Sollte dies häufiger vorkommen, kontaktiere bitte den Support.') {
+    document.getElementById('login-div').style.display = 'none';
+    document.getElementById('app-container').style.display = 'flex';
+    appEle.innerHTML = `<span class="error">${error}<br>Session ID: ${sessionID}</span>`
 }
 
 function uploadButtonUpdate() {
@@ -244,7 +236,7 @@ function validate() {
         image.onload = function () {
             if (this.width) {
                 console.log('First uploaded file is an image');
-                if (!disableCrop) {
+                if (!config.client.disableCrop) {
                     cropPhoto(this)
                 } else {
                     picFinished(this, [0, 0, 0, 0], [this.width, this.height], true)
@@ -295,7 +287,7 @@ async function uploadPicture(pic, frame, size, cropDisabled) {
         const { error: uploadError } = await supabase
             .storage
             .from('pictures')
-            .upload(userID + '/' + id + '.jpg', converted, {
+            .upload(user.id + '/' + id + '.jpg', converted, {
                 cacheControl: '3600',
                 upsert: false
             })
@@ -306,10 +298,9 @@ async function uploadPicture(pic, frame, size, cropDisabled) {
         }
         const { error: pictureListError } = await supabase
             .from('pictures')
-            .insert({ id: id, user_id: userID, campaign_id: user.campaign.id, created_at: new Date(), frame: frame, size: size, crop_disabled: cropDisabled })
+            .insert({ id: id, user_id: user.id, campaign_id: user.campaign.id, created_at: new Date(), frame: frame, size: size, crop_disabled: cropDisabled })
         if (pictureListError) {
-            console.warn(pictureListError);
-            showError();
+            console.error(pictureListError);
             return;
         }
         uploadSuccessfulScreen()
@@ -373,11 +364,10 @@ async function statusScreen() {
     const { data: pictures, error: picturesError } = await supabase
         .from('pictures')
         .select()
-        .eq('user_id', userID)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
     if (picturesError) {
-        console.warn(picturesError);
-        showError();
+        console.error(picturesError);
         return;
     }
 
@@ -388,10 +378,9 @@ async function statusScreen() {
         const { data: file, error: fileError } = await supabase
             .storage
             .from('pictures')
-            .download(`${userID}/${pictures[i].id}.jpg`)
+            .download(`${user.id}/${pictures[i].id}.jpg`)
         if (fileError) {
-            console.warn(fileError);
-            showError();
+            console.error(fileError);
             return;
         }
         let imageUrl = URL.createObjectURL(file);
@@ -435,20 +424,16 @@ async function statusScreen() {
     }
 }
 
-async function loggedIn() {
-    console.log(navigator.userAgent);
+async function paid() {
     const { data: pictures, error } = await supabase
         .from('pictures')
         .select()
-        .eq('user_id', userID)
+        .eq('user_id', user.id)
         .eq('campaign_id', user.campaign.id);
     if (error) {
-        console.warn(error);
-        showError();
+        console.error(error);
         return;
     }
-
-    document.getElementById("username-span").innerText = user.first_name + " " + user.last_name;
 
     if (pictures.length === 0) {
         console.log('No picture uploaded -> showing Upload Picture Screen');
@@ -459,77 +444,48 @@ async function loggedIn() {
     }
 }
 
+async function loggedIn() {
+    if (!user.campaign.payment_required || user.user_campaign.paid) {
+        paid();
+        return;
+    }
+    appEle.innerHTML = `<button id="pay-via-mollie">Mit Mollie bezahlen</button>`
+    document.getElementById("pay-via-mollie").addEventListener("click", async () => {
+        let paymentReqResponse = await fetch(config.apiURL + 'payment/start/?paymentMethod=mollie', {
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                user: user.id,
+                campaign: user.campaign.id
+            })
+        });
+        paymentReqResponse = await paymentReqResponse.json();
+        if (paymentReqResponse.action === 'openURL') window.location = paymentReqResponse.url
+    })
+}
+
 async function logUserIn() {
-    document.getElementById("login").disabled = "true";
-    document.getElementById("login").innerText = "Anmelden...";
-    const { data, error } = await supabase.auth.signInWithPassword({
-        email: document.getElementById('id-input').value + '@external.users.lama-id.de',
-        password: document.getElementById('password').value,
-    });
-    if (error) {
-        console.warn(error);
-        document.getElementById('login').removeAttribute('disabled')
-        document.getElementById('login').innerText = "Anmelden";
-        document.getElementById('login-error-text').innerHTML = '<b>Eingaben fehlerhaft</b><br>Bitte ID und Code überprüfen'
-        document.getElementById('login-error').style.display = 'grid';
-    } else {
-        userID = data.user.id;
-        console.log('Successful login. ID is', userID);
-        let { data: users, error: userError } = await supabase
-            .from('users')
-            .select('*, school:school_id(*), campaigns:user_campaign(*)')
-            .eq('id', userID);
-        if (userError) {
-            console.warn(userError);
-            showError();
-            return;
-        }
-        user = users[0]
-        if (!user) {
-            console.warn('User is empty');
-            showError();
-            return;
-        }
-        let campaignIDs = [];
-        for (let i = 0; i < user.campaigns.length; i++) {
-            campaignIDs.push(user.campaigns[i].campaign_id);
-        }
-        const { data: campaigns, error: campaignsError } = await supabase
-            .from('campaigns')
-            .select('*')
-            .in('id', campaignIDs);
-        campaigns.sort((a, b) => {
-            return b.priority - a.priority;
-        })
-        if (campaignsError) {
-            console.warn(campaignsError);
-            showError();
-            return;
-        }
-        user.campaign = campaigns[0];
-        for (let i = 0; i < user.campaigns.length; i++) {
-            if (user.campaigns[i].campaign_id === user.campaign.id) {
-                user.campaign.group_id = user.campaigns[i].group_id
-                user.campaign.valid_date = user.campaigns[i].valid_date
-                user.campaign.paid = user.campaigns[i].paid
-            }
-        }
-        const { data: groups, error: groupsError } = await supabase
-            .from('groups')
-            .select('*')
-            .eq('id', user.campaign.group_id);
-        user.group = groups[0];
-        console.log('User data fetched', user);
-        if (!user.campaign.active && !ignoreCampaignStatus) {
-            console.log('Campaign is already closed')
+    document.getElementById('login').disabled = 'true';
+    document.getElementById('login').innerText = 'Anmelden...';
+    try {
+        await logUserInScript(document.getElementById('id-input').value, document.getElementById('password').value, config.client.ignoreCampaignStatus);
+        document.getElementById('login-div').style.display = 'none';
+        document.getElementById('app-container').style.display = 'flex';
+        document.getElementById('username-span').innerText = user.first_name + " " + user.last_name;
+        loggedIn();
+    } catch (error) {
+        if (error.message === 'invalid-credentials') {
+            document.getElementById('login').removeAttribute('disabled')
+            document.getElementById('login').innerText = "Anmelden";
+            document.getElementById('login-error-text').innerHTML = '<b>Eingaben fehlerhaft</b><br>Bitte ID und Code überprüfen'
+            document.getElementById('login-error').style.display = 'grid';
+        } else if (error.message === 'campaign-closed') {
             document.getElementById('login').removeAttribute('disabled')
             document.getElementById('login').innerText = "Anmelden";
             document.getElementById('login-error-text').innerHTML = '<b>Portal geschlossen</b><br>Für deine Schule werden keine neuen Fotos mehr akzeptiert'
             document.getElementById('login-error').style.display = 'grid';
-        } else {
-            document.getElementById('login-div').style.display = 'none';
-            document.getElementById('app-container').style.display = 'flex';
-            loggedIn();
         }
     }
 }
@@ -602,59 +558,63 @@ document.getElementById("tos").addEventListener("click", () => { window.open('ht
 document.getElementById("info").addEventListener("click", () => { window.open('https://info.lama-id.de/', '_blank').focus(); })
 document.getElementById("app-logo").addEventListener("click", () => { window.location.reload(); })
 document.addEventListener("keypress", (event) => {
-    if (event.key === 'Enter' && !userID && document.getElementById('password').value) {
-        logUserIn()
+    if (event.key === 'Enter' && !user) {
+        event.preventDefault();
+        if (!document.getElementById('id-input').value) return;
+        if (!document.getElementById('password').value) {
+            document.getElementById('password').focus();
+            return;
+        }
+        logUserIn();
     }
 });
 
 
-const params = new URLSearchParams(window.location.search);
-const logLevel = params.get('logLevel');
 function createLogBindings() {
-    if (!logLevel) return
     let errorBind = console.error.bind(console);
     let warnBind = console.warn.bind(console);
     let logBind = console.log.bind(console);
     let debugBind = console.warn.bind(console);
 
-    console.error = async (text, json) => {
-        await supabase
-            .from('logs')
-            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'ERROR', log: text + ' ' + JSON.stringify(json) })
+    if (!config.client.logLevel) config.client.logLevel = config.client.logLevel;
+
+    console.error = (text, json) => {
+        showError();
         errorBind(text, json);
     }
-    if (logLevel === 'error') return
+    if (config.client.logLevel === 'none') return;
+    console.error = async (text, json) => {
+        showError();
+        await supabase
+            .from('logs')
+            .insert({ created_at: new Date(), session_id: sessionID, user_id: user.id, type: 'ERROR', log: text + ' ' + JSON.stringify(json) })
+        errorBind(text, json);
+    }
+    if (config.client.logLevel === 'error') return
     console.warn = async (text, json) => {
         await supabase
             .from('logs')
-            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'WARN', log: text + ' ' + JSON.stringify(json) })
+            .insert({ created_at: new Date(), session_id: sessionID, user_id: user.id, type: 'WARN', log: text + ' ' + JSON.stringify(json) })
         warnBind(text, json);
     }
-    if (logLevel === 'warn') return
+    if (config.client.logLevel === 'warn') return
     console.log = async (text, json) => {
         await supabase
             .from('logs')
-            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'LOG', log: text + ' ' + JSON.stringify(json) })
+            .insert({ created_at: new Date(), session_id: sessionID, user_id: user.id, type: 'LOG', log: text + ' ' + JSON.stringify(json) })
         logBind(text, json);
     }
-    if (logLevel === 'log') return
+    if (config.client.logLevel === 'log') return
     console.debug = async (text, json) => {
         await supabase
             .from('logs')
-            .insert({ created_at: new Date(), session_id: sessionID, user_id: userID, type: 'DEBUG', log: text + ' ' + JSON.stringify(json) })
+            .insert({ created_at: new Date(), session_id: sessionID, user_id: user.id, type: 'DEBUG', log: text + ' ' + JSON.stringify(json) })
         debugBind(text, json);
     }
 }
-//const disableCrop = (params.get('disableCrop') === 'true') ? true : false;
-const disableCrop = true;
-const ignoreCampaignStatus = (params.get('ignoreCampaignStatus') === 'true') ? true : false;
-const loginViaParams = {
-    id: params.get('id'),
-    password: params.get('password')
-};
-if (loginViaParams.id) document.getElementById('id-input').value = loginViaParams.id;
-if (loginViaParams.password) document.getElementById('password').value = loginViaParams.password;
-if (loginViaParams.id && loginViaParams.password) {
-    logUserIn();
-}
-createLogBindings()
+if (config.client.context === 'callback' && localStorage.getItem('login') !== null) config.client.login = JSON.parse(localStorage.getItem('login'));
+console.log(config)
+if (config.client.login.id) document.getElementById('id-input').value = config.client.login.id;
+if (config.client.login.password) document.getElementById('password').value = config.client.login.password;
+if (config.client.login.id && config.client.login.password) logUserIn();
+createLogBindings();
