@@ -2,8 +2,9 @@
     /* Colors: */
     --akzente-buttons: #49BCFF;
     --beschriftung: #7E7E7E;
-    --disabled: #b1b1b1;
+    --disabled: #B1B1B1;
     --text: #3D3D3D;
+    --background: #F3F3F3;
     --error-background: #F658581A;
 }
 
@@ -255,6 +256,40 @@ footer>* {
     max-height: calc(100vh - 4em);
 }
 
+#invoice-recipient-form {
+    display: grid;
+    gap: 13px;
+    grid-template-columns: 6.5em auto 6.5em;
+    grid-template-rows: repeat(4, 1fr); 
+}
+
+#invoice-name { grid-area: 1 / 1 / 2 / 4; }
+#invoice-street { grid-area: 2 / 1 / 3 / 3; }
+#invoice-number { grid-area: 2 / 3 / 3 / 4; }
+#invoice-zip { grid-area: 3 / 1 / 4 / 2; }
+#invoice-city { grid-area: 3 / 2 / 4 / 4; }
+#invoice-email { grid-area: 4 / 1 / 5 / 4; }
+
+#invoice-submit {
+    width: 20em;
+}
+
+#pay-left-ele {
+    max-width: 30em;
+    padding: 0 25px;
+    border-right: 3px solid var(--akzente-buttons);
+}
+
+#pay-right-ele {
+    background-color: var(--background);
+    padding: 0 25px;
+}
+
+#next-payment-screen {
+    width: 20em;
+    margin-left: 25px;
+}
+
 .photo-upload {
     display: grid;
     grid-template-rows: auto auto;
@@ -319,6 +354,10 @@ input[type="file"] {
     background: var(--disabled)
 }
 
+#next-payment-screen:disabled {
+    background: var(--disabled)
+}
+
 #login:disabled {
     background: var(--disabled)
 }
@@ -346,6 +385,18 @@ input[type="file"] {
     padding: 1em;
     top: 0;
     left: 0;
+}
+
+.select-payment {
+    width: 100%;
+    min-height: 7.5em;
+    background: white;
+    color: black;
+    border: 3px solid var(--akzente-buttons);
+}
+
+#pay-via-sct {
+    margin-bottom: 25px;
 }
 
 #close-button {
@@ -428,6 +479,12 @@ input:checked+.slider:before {
     border-radius: 50%;
 }
 
+/*@media only screen and (min-width: 1051px) {
+    .grid-w-line > *:nth-child(2) {
+        border-left: 3px solid var(--akzente-buttons);
+    }
+}*/
+
 @media only screen and (max-width: 1050px) {
     body {
         padding-left: 1em;
@@ -469,6 +526,14 @@ input:checked+.slider:before {
     .grid-w-line {
         display: flex;
         justify-content: center;
+    }
+
+    #pay-left-ele {
+        border: none;
+    }
+
+    #payment-div {
+        flex-direction: column;
     }
 
     .photo-upload {
@@ -534,6 +599,10 @@ input:checked+.slider:before {
 
     #big-logo {
         width: calc(calc(100vw - 3em) * 0.466)
+    }
+    #invoice-recipient-form {
+        display: flex;
+        flex-direction: column;
     }
 }
 

@@ -57,7 +57,7 @@ async function logUserInScript(id, password, ignoreCampaignStatus) {
     }
     user.campaign = campaigns[0];
     for (let i = 0; i < user.campaigns.length; i++) {
-        if (user.campaigns[i].campaign_id === user.campaign.id) user.campaign = {...user.campaign, ...user.campaigns[i]};
+        if (user.campaigns[i].campaign_id === user.campaign.id) user.campaign = { ...user.campaign, ...user.campaigns[i] };
     }
     const { data: userCampaign, error: userCampaignError } = await supabase
         .from('user_campaign')
@@ -73,6 +73,18 @@ async function logUserInScript(id, password, ignoreCampaignStatus) {
         return;
     }
     user.user_campaign = userCampaign[0];
+    const { data: userInvoice, error: userInvoiceError } = await supabase
+        .from('invoice_data')
+        .select()
+        .eq('user_id', user.id)
+        .eq('campaign_id', user.campaign.id);
+    if (userInvoiceError) {
+        console.error(userInvoiceError);
+        return;
+    }
+    if (userInvoice.length === 1) {
+        user.invoice = userInvoice[0];
+    }
     const { data: groups, error: groupsError } = await supabase
         .from('groups')
         .select('*')
@@ -91,4 +103,9 @@ async function logUserInScript(id, password, ignoreCampaignStatus) {
     }
 }
 
-export { supabase, user, logUserInScript };
+async function getJWT() {
+    const { data, error } = await supabase.auth.getSession();
+    return data.session.access_token
+}
+
+export { supabase, user, logUserInScript, getJWT };

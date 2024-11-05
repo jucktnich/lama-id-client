@@ -1,5 +1,6 @@
-import { supabase, user, logUserInScript } from './supabase.js'
+import { supabase, user, logUserInScript, getJWT } from './supabase.js'
 import { config, uuidv4 } from './helpers.js';
+import showPaymentScreen from './paymentScreens.js'
 
 const appEle = document.getElementById("app");
 const sessionID = uuidv4();
@@ -239,7 +240,19 @@ function validate() {
                 if (!config.client.disableCrop) {
                     cropPhoto(this)
                 } else {
-                    picFinished(this, [0, 0, 0, 0], [this.width, this.height], true)
+                    let frame = [];
+                    if((this.width / this.height) < (24 / 30)) {
+                        //Higher than 24 / 30
+                        const factor = (this.height / this.width) * (24 / 30);
+                        const overlap = (this.width * (factor - 1)) / 2
+                        frame = [-overlap, 0, this.width * factor, this.height];
+                    } else {
+                        //Wider than 24 / 30
+                        const factor = (this.width / this.height) * (30 / 24);
+                        const overlap = (this.height * (factor - 1)) / 2
+                        frame = [0, -overlap, this.width, this.height * factor];
+                    }
+                    picFinished(this, frame, [this.width, this.height], true)
                 }
             } else {
                 console.warn('First uploaded file is NOT an image');
@@ -424,7 +437,7 @@ async function statusScreen() {
     }
 }
 
-async function paid() {
+export async function paid() {
     const { data: pictures, error } = await supabase
         .from('pictures')
         .select()
@@ -445,25 +458,23 @@ async function paid() {
 }
 
 async function loggedIn() {
-    if (!user.campaign.payment_required || user.user_campaign.paid) {
+    window.scrollTo(0, 0);
+    if (!user.campaign.payment_required || user.campaign.paid || config.client.context === 'callback') {
         paid();
         return;
-    }
-    appEle.innerHTML = `<button id="pay-via-mollie">Mit Mollie bezahlen</button>`
-    document.getElementById("pay-via-mollie").addEventListener("click", async () => {
-        let paymentReqResponse = await fetch(config.apiURL + 'payment/start/?paymentMethod=mollie', {
-            method: 'POST',
+    } else if (user.campaign.payment_data.status === 'canceled' || user.campaign.payment_data.status === 'expired' || user.campaign.payment_data.status === 'failed') {
+        await showPaymentScreen();
+    }/* else {
+        const response = await fetch(config.apiURL + 'payment/status/', {
+            method: 'GET',
             headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                user: user.id,
-                campaign: user.campaign.id
-            })
-        });
-        paymentReqResponse = await paymentReqResponse.json();
-        if (paymentReqResponse.action === 'openURL') window.location = paymentReqResponse.url
-    })
+                user_access_token: await getJWT()
+            }
+        })
+        console.log(await response.json());
+        return;
+    }*/
+    await showPaymentScreen();
 }
 
 async function logUserIn() {
