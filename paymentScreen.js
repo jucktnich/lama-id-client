@@ -19,7 +19,7 @@ function showPaymentScreen1() {
         </div>
         <div id="pay-right-ele">
             <h2>Produkte</h2>
-            <p><b>Schülerausweis</b><br>personalisiert, Auslieferung über Schule</p>
+            <p><b>${user.campaign.type === 'EXTEND' ? 'Verlängerung ' : ''}Schülerausweis</b><br>personalisiert, Auslieferung über Schule</p>
             <p><b>zu zahlen: ${Number(user.campaign.payment_information.price / 100).toFixed(2)}€
         </div>
     </div>
@@ -94,12 +94,15 @@ function showPaymentScreen3() {
 function showPaymentScreen4() {
     document.getElementById('next-payment-screen').style.display = 'none';
     window.scrollTo(0, 0);
-    leftEle.innerHTML = `
-    <button class="select-payment" id="pay-via-sct"><b>Überweisung</b><br>manuell vom Bankkonto</button>
-    <button class="select-payment" id="pay-via-mollie"><b>Online-Zahlung</b><br>mit PayPal, Kreditkarte, usw.</button>
-    `
-    document.getElementById('pay-via-sct').addEventListener('click', payViaSCT)
-    document.getElementById('pay-via-mollie').addEventListener('click', payViaMollie)
+    leftEle.innerHTML = '';
+    if (user.campaign.payment_information.sct) {
+        leftEle.innerHTML += '<button class="select-payment" id="pay-via-sct"><b>Überweisung</b><br>manuell vom Bankkonto</button>'
+        document.getElementById('pay-via-sct').addEventListener('click', payViaSCT);
+    }
+    if (user.campaign.payment_information.mollie) {
+        leftEle.innerHTML += '<button class="select-payment" id="pay-via-mollie"><b>Online-Zahlung</b><br>mit PayPal, Kreditkarte, usw.</button>'
+        document.getElementById('pay-via-mollie').addEventListener('click', payViaMollie);
+    }
 }
 
 function payViaSCT() {
@@ -122,7 +125,7 @@ function payViaSCT() {
 }
 
 async function payViaMollie() {
-    let paymentReqResponse = await fetch(config.apiURL + 'payment/start/?paymentMethod=mollie', {
+    let paymentReqResponse = await fetch(config.apiURL + 'payment/start/?paymentMethod=mollie&env=' + config.env, {
         method: 'POST',
         headers: {
             "Content-Type": "application/json",
@@ -138,8 +141,5 @@ async function payViaMollie() {
 
 export default function() {
     console.log('Showing payment screens');
-    /*return new Promise((resolve, reject), () => {
-        promiseResolve = resolve;*/
-        showPaymentScreen1();
-    //})
+    showPaymentScreen1();
 }

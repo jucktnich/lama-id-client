@@ -8,5 +8,6 @@
         "disableCrop": true,
         "ignoreCampaignStatus": false
     },
-    "apiURL": "https://api.lama-id.de/"
+    "apiURL": "https://api.lama-id.de/",
+    "env": "prod"
 }

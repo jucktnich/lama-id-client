@@ -1,6 +1,6 @@
 import { supabase, user, logUserInScript, getJWT } from './supabase.js'
 import { config, uuidv4 } from './helpers.js';
-import showPaymentScreen from './paymentScreens.js'
+import showPaymentScreen from './paymentScreen.js'
 
 const appEle = document.getElementById("app");
 const sessionID = uuidv4();
@@ -241,7 +241,7 @@ function validate() {
                     cropPhoto(this)
                 } else {
                     let frame = [];
-                    if((this.width / this.height) < (24 / 30)) {
+                    if ((this.width / this.height) < (24 / 30)) {
                         //Higher than 24 / 30
                         const factor = (this.height / this.width) * (24 / 30);
                         const overlap = (this.width * (factor - 1)) / 2
@@ -438,13 +438,18 @@ async function statusScreen() {
 }
 
 export async function paid() {
-    const { data: pictures, error } = await supabase
+    if (user.campaign.type === 'EXTEND') {
+        appEle.innerHTML = '<h1>Verlängerung beantragt</h1><p>Dein Ausweis wurde erfolgreich verlängert! Du erhältst die Verlängerung in Kürze über Deine Schule.</p>';
+        return;
+    }
+
+    const { data: pictures, error: picturesError } = await supabase
         .from('pictures')
         .select()
         .eq('user_id', user.id)
         .eq('campaign_id', user.campaign.id);
-    if (error) {
-        console.error(error);
+    if (picturesError) {
+        console.error(picturesError);
         return;
     }
 
